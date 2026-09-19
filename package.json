@@ -1,0 +1,14 @@
+{
+  "name": "n8n-ai-invoice-collections-automation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generic enterprise-style n8n portfolio project for controlled AI invoice follow-up automation.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-workflow.mjs",
+    "test": "node scripts/validate-workflow.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

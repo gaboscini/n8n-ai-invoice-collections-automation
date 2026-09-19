@@ -1,0 +1,20 @@
+{
+  "requestId": "demo-preview-001",
+  "action": "preview",
+  "useAi": false,
+  "asOfDate": "2026-09-19",
+  "actor": {
+    "userId": "analyst-demo-01",
+    "role": "ar_analyst"
+  },
+  "invoice": {
+    "invoiceId": "INV-DEMO-1042",
+    "customerId": "CUS-DEMO-204",
+    "customerName": "Northstar Office Supply",
+    "customerEmail": "accounts.payable@example.com",
+    "amount": 18450,
+    "currency": "USD",
+    "dueDate": "2026-08-05",
+    "status": "OPEN"
+  }
+}

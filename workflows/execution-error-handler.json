@@ -1,0 +1,189 @@
+{
+  "name": "AI Invoice Collections Automation - Execution Error Handler",
+  "nodes": [
+    {
+      "id": "error-note-1",
+      "name": "Error Process 1 - Capture",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -850,
+        -300
+      ],
+      "parameters": {
+        "width": 700,
+        "height": 560,
+        "color": 3,
+        "content": "## Error process 1 — Capture and sanitize\nReceives failed-execution metadata through n8n's Error Trigger. Email addresses, bearer tokens, and API-key-like values are redacted before an alert payload is built."
+      }
+    },
+    {
+      "id": "error-trigger",
+      "name": "Capture Workflow Failure",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -770,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "normalize-error",
+      "name": "Normalize and Redact Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const execution = $json.execution || {};\nconst workflow = $json.workflow || {};\nconst rawMessage = String(execution.error?.message || \"Unknown workflow error\");\nconst redacted = rawMessage\n  .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/g, \"[EMAIL_REDACTED]\")\n  .replace(/(bearer\\s+)[A-Za-z0-9._-]+/gi, \"$1[REDACTED]\")\n  .replace(/(api[_-]?key[=:\\s]+)[^\\s,;]+/gi, \"$1[REDACTED]\");\nreturn { json: {\n  incident: {\n    incidentId: \"incident-\" + Date.now(),\n    workflowName: String(workflow.name || \"unknown\").slice(0, 120),\n    executionId: String(execution.id || \"unknown\").slice(0, 100),\n    lastNode: String(execution.lastNodeExecuted || \"unknown\").slice(0, 120),\n    message: redacted.slice(0, 1000),\n    occurredAt: new Date().toISOString()\n  }\n} };"
+      }
+    },
+    {
+      "id": "error-note-2",
+      "name": "Error Process 2 - Classification",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        -300
+      ],
+      "parameters": {
+        "width": 620,
+        "height": 560,
+        "color": 2,
+        "content": "## Error process 2 — Classify\nAssigns an operational severity and retry hint using deterministic rules. The LLM is never used to decide incident priority."
+      }
+    },
+    {
+      "id": "severity",
+      "name": "Classify Incident Severity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst message = data.incident.message.toLowerCase();\nlet severity = \"medium\";\nif (/credential|unauthorized|forbidden|data loss|delivery/.test(message)) severity = \"high\";\nif (/timeout|rate limit|temporar/.test(message)) severity = \"medium\";\nif (/validation|invalid input/.test(message)) severity = \"low\";\nreturn { json: { ...data, classification: { severity, retryable: /timeout|rate limit|temporar/.test(message) } } };"
+      }
+    },
+    {
+      "id": "error-note-3",
+      "name": "Error Process 3 - Alert",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        570,
+        -300
+      ],
+      "parameters": {
+        "width": 650,
+        "height": 560,
+        "color": 5,
+        "content": "## Error process 3 — Prepare alert\nCreates a minimal alert containing incident ID, workflow, last node, severity, and retry guidance. Public mode does not call Slack, Teams, PagerDuty, or email."
+      }
+    },
+    {
+      "id": "alert",
+      "name": "Build Redacted Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ...$json,\n  alert: {\n    channel: \"simulation\",\n    title: \"[\" + $json.classification.severity.toUpperCase() + \"] n8n workflow incident\",\n    summary: $json.incident.workflowName + \" failed at \" + $json.incident.lastNode,\n    incidentId: $json.incident.incidentId,\n    retryable: $json.classification.retryable,\n    sensitiveDataRedacted: true\n  }\n} };"
+      }
+    },
+    {
+      "id": "error-note-4",
+      "name": "Error Process 4 - Audit",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1270,
+        -300
+      ],
+      "parameters": {
+        "width": 650,
+        "height": 560,
+        "color": 4,
+        "content": "## Error process 4 — Audit result\nReturns a structured incident object for inspection. A production workflow would persist it centrally and route the alert through an approved operational channel."
+      }
+    },
+    {
+      "id": "error-audit",
+      "name": "Build Incident Audit Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1350,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ok: true,\n  status: \"incident_recorded\",\n  incident: $json.incident,\n  classification: $json.classification,\n  alert: $json.alert,\n  note: \"Public portfolio mode simulates alert delivery.\"\n} };"
+      }
+    }
+  ],
+  "connections": {
+    "Capture Workflow Failure": {
+      "main": [
+        [
+          {
+            "node": "Normalize and Redact Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize and Redact Error": {
+      "main": [
+        [
+          {
+            "node": "Classify Incident Severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Incident Severity": {
+      "main": [
+        [
+          {
+            "node": "Build Redacted Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Redacted Alert": {
+      "main": [
+        [
+          {
+            "node": "Build Incident Audit Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "8c369b39-05d7-4f2b-a8af-b4b5cfabfdf4",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -1,0 +1,1309 @@
+{
+  "name": "AI Invoice Collections Automation - Preview and Approval",
+  "nodes": [
+    {
+      "id": "note-1",
+      "name": "Process 1 - Request Intake",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        -330
+      ],
+      "parameters": {
+        "width": 720,
+        "height": 650,
+        "color": 5,
+        "content": "## Process 1 — Request intake\n**Purpose:** establish traceability before processing business data.\n\n**Controls**\n- POST-only webhook\n- correlation and request identifiers\n- workflow version and safety-mode markers\n\n**Output:** a bounded execution context plus the untrusted request."
+      }
+    },
+    {
+      "id": "webhook",
+      "name": "Receive Collection Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-invoice-collections",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "0a4d132d-f53a-4f07-af68-cc73ee28f0ac"
+    },
+    {
+      "id": "initialize",
+      "name": "Initialize Execution Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -970,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const payload = $json.body ?? $json;\nconst receivedAt = new Date().toISOString();\nconst requestId = String(payload.requestId ?? \"\").trim().slice(0, 100);\nreturn { json: {\n  context: {\n    requestId,\n    correlationId: requestId || (\"generated-\" + Date.now()),\n    receivedAt,\n    workflowVersion: \"1.0.0\",\n    safetyMode: true\n  },\n  raw: payload\n} };"
+      }
+    },
+    {
+      "id": "note-2",
+      "name": "Process 2 - Contract Validation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -330
+      ],
+      "parameters": {
+        "width": 950,
+        "height": 650,
+        "color": 3,
+        "content": "## Process 2 — Contract validation and minimization\n**Purpose:** reject malformed or oversized input before policy evaluation or AI.\n\n**Controls**\n- required field and role checks\n- strict date, email, amount, and currency validation\n- 100 KB request limit\n- string length bounds\n- data minimization and normalization\n\n**Failure:** HTTP 400 with a correlation ID; no downstream action."
+      }
+    },
+    {
+      "id": "validate",
+      "name": "Validate Request Contract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -470,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const input = $json;\nconst payload = input.raw || {};\nconst errors = [];\nconst text = (value, max = 200) => String(value ?? \"\").trim().slice(0, max);\nconst actor = payload.actor && typeof payload.actor === \"object\" ? payload.actor : {};\nconst invoice = payload.invoice && typeof payload.invoice === \"object\" ? payload.invoice : {};\nconst action = text(payload.action || \"preview\", 20).toLowerCase();\nconst amount = Number(invoice.amount);\nconst currency = text(invoice.currency, 3).toUpperCase();\nconst dueDate = text(invoice.dueDate, 10);\nconst asOfDate = text(payload.asOfDate || new Date().toISOString().slice(0, 10), 10);\nconst customerEmail = text(invoice.customerEmail, 254).toLowerCase();\nconst serializedSize = JSON.stringify(payload).length;\n\nif (serializedSize > 100000) errors.push(\"Request exceeds the 100 KB demonstration limit\");\nif (!input.context.requestId) errors.push(\"requestId is required\");\nif (![\"preview\", \"send\"].includes(action)) errors.push(\"action must be preview or send\");\nif (!text(actor.userId, 100)) errors.push(\"actor.userId is required\");\nif (![\"ar_analyst\", \"ar_manager\", \"finance_admin\"].includes(text(actor.role, 30).toLowerCase())) errors.push(\"actor.role is not supported\");\nif (!text(invoice.invoiceId, 80)) errors.push(\"invoice.invoiceId is required\");\nif (!text(invoice.customerId, 80)) errors.push(\"invoice.customerId is required\");\nif (!text(invoice.customerName, 160)) errors.push(\"invoice.customerName is required\");\nif (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(customerEmail)) errors.push(\"invoice.customerEmail must be valid\");\nif (!Number.isFinite(amount) || amount <= 0 || amount > 1000000000) errors.push(\"invoice.amount must be between 0 and 1,000,000,000\");\nif (!/^[A-Z]{3}$/.test(currency)) errors.push(\"invoice.currency must be a three-letter ISO code\");\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate) || Number.isNaN(Date.parse(dueDate + \"T00:00:00Z\"))) errors.push(\"invoice.dueDate must be YYYY-MM-DD\");\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(asOfDate) || Number.isNaN(Date.parse(asOfDate + \"T00:00:00Z\"))) errors.push(\"asOfDate must be YYYY-MM-DD\");\n\nreturn { json: {\n  ...input,\n  validation: { valid: errors.length === 0, errors, serializedSize }\n} };"
+      }
+    },
+    {
+      "id": "valid",
+      "name": "Contract Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid-condition",
+              "leftValue": "={{ $json.validation.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "validation-error",
+      "name": "Build Validation Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        520
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ok: false,\n  status: \"validation_failed\",\n  correlationId: $json.context.correlationId,\n  errors: $json.validation.errors,\n  message: \"The request was rejected before policy evaluation or AI processing.\"\n} };"
+      }
+    },
+    {
+      "id": "validation-response",
+      "name": "Return HTTP 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -10,
+        520
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    },
+    {
+      "id": "normalize",
+      "name": "Normalize and Minimize Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -10,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const payload = $json.raw;\nconst clean = (value, max) => String(value ?? \"\").trim().slice(0, max);\nconst normalized = {\n  request: {\n    action: clean(payload.action || \"preview\", 20).toLowerCase(),\n    useAi: payload.useAi === true,\n    approvalPhrase: clean(payload.approvalPhrase, 180),\n    asOfDate: clean(payload.asOfDate || new Date().toISOString().slice(0, 10), 10)\n  },\n  actor: {\n    userId: clean(payload.actor.userId, 100),\n    role: clean(payload.actor.role, 30).toLowerCase()\n  },\n  invoice: {\n    invoiceId: clean(payload.invoice.invoiceId, 80),\n    customerId: clean(payload.invoice.customerId, 80),\n    customerName: clean(payload.invoice.customerName, 160),\n    customerEmail: clean(payload.invoice.customerEmail, 254).toLowerCase(),\n    amount: Number(payload.invoice.amount),\n    currency: clean(payload.invoice.currency, 3).toUpperCase(),\n    dueDate: clean(payload.invoice.dueDate, 10),\n    status: clean(payload.invoice.status || \"OPEN\", 30).toUpperCase(),\n    disputeStatus: clean(payload.invoice.disputeStatus || \"NONE\", 30).toUpperCase()\n  },\n  policy: {\n    minimumAmount: Math.max(0, Number(payload.policy?.minimumAmount ?? 25)),\n    allowedCurrencies: Array.isArray(payload.policy?.allowedCurrencies)\n      ? payload.policy.allowedCurrencies.map(value => clean(value, 3).toUpperCase()).slice(0, 20)\n      : [\"USD\", \"EUR\", \"GBP\", \"AUD\", \"SGD\", \"PHP\"],\n    demoRecipientDomain: clean(payload.policy?.demoRecipientDomain || \"example.com\", 100).toLowerCase()\n  }\n};\nreturn { json: { context: $json.context, validation: $json.validation, ...normalized } };"
+      }
+    },
+    {
+      "id": "fingerprint",
+      "name": "Build Control Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst parts = [\n  data.invoice.invoiceId.toLowerCase(),\n  data.request.action,\n  data.request.asOfDate,\n  data.actor.userId.toLowerCase()\n];\nreturn { json: {\n  ...data,\n  control: {\n    idempotencyKey: parts.join(\"|\"),\n    dataClassification: \"fictional_demo\",\n    safetyMode: true\n  }\n} };"
+      }
+    },
+    {
+      "id": "note-3",
+      "name": "Process 3 - Authorization and Policy",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -330
+      ],
+      "parameters": {
+        "width": 970,
+        "height": 650,
+        "color": 2,
+        "content": "## Process 3 — Authorization and deterministic policy\n**Purpose:** keep financial and authorization decisions outside the LLM.\n\n**Controls**\n- analysts may preview; managers/admins may approve send\n- closed, disputed, and on-hold invoices excluded\n- minimum amount and currency policy\n- deterministic aging stage and risk score\n\n**Output:** an explainable eligibility decision."
+      }
+    },
+    {
+      "id": "authorize",
+      "name": "Authorize Requested Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        530,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst sendRoles = [\"ar_manager\", \"finance_admin\"];\nconst actionAuthorized = data.request.action === \"preview\" || sendRoles.includes(data.actor.role);\nreturn { json: {\n  ...data,\n  authorization: {\n    actionAuthorized,\n    reason: actionAuthorized ? \"Actor is permitted for the requested action\" : \"Only AR managers and finance administrators may approve a send action\"\n  }\n} };"
+      }
+    },
+    {
+      "id": "authorized",
+      "name": "Action Authorized?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        760,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "authorized-condition",
+              "leftValue": "={{ $json.authorization.actionAuthorized }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "auth-error",
+      "name": "Build Authorization Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        520
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ok: false,\n  status: \"forbidden\",\n  correlationId: $json.context.correlationId,\n  reason: $json.authorization.reason,\n  message: \"The actor is not authorized for this action.\"\n} };"
+      }
+    },
+    {
+      "id": "auth-response",
+      "name": "Return HTTP 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        990,
+        520
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 403
+        }
+      }
+    },
+    {
+      "id": "policy",
+      "name": "Apply Collection Policy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        990,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst daysOverdue = Math.max(0, Math.floor((\n  Date.parse(data.request.asOfDate + \"T00:00:00Z\") - Date.parse(data.invoice.dueDate + \"T00:00:00Z\")\n) / 86400000));\nconst closed = [\"PAID\", \"SETTLED\", \"CLOSED\", \"VOID\"].includes(data.invoice.status);\nconst blocked = [\"DISPUTED\", \"ON_HOLD\"].includes(data.invoice.disputeStatus) || [\"DISPUTED\", \"ON_HOLD\"].includes(data.invoice.status);\nconst currencyAllowed = data.policy.allowedCurrencies.includes(data.invoice.currency);\nconst aboveMinimum = data.invoice.amount >= data.policy.minimumAmount;\nlet stage = \"current\";\nlet tone = \"informational\";\nlet riskScore = 0;\nif (daysOverdue >= 61) { stage = \"legal_review\"; tone = \"firm\"; riskScore += 70; }\nelse if (daysOverdue >= 31) { stage = \"manager_review\"; tone = \"firm\"; riskScore += 50; }\nelse if (daysOverdue >= 15) { stage = \"payment_reminder\"; tone = \"professional\"; riskScore += 30; }\nelse if (daysOverdue >= 1) { stage = \"early_follow_up\"; tone = \"friendly\"; riskScore += 15; }\nif (data.invoice.amount >= 50000) riskScore += 20;\nelse if (data.invoice.amount >= 10000) riskScore += 10;\nconst eligible = !closed && !blocked && daysOverdue > 0 && currencyAllowed && aboveMinimum;\nconst reasons = [];\nif (closed) reasons.push(\"Invoice is closed\");\nif (blocked) reasons.push(\"Invoice is disputed or on hold\");\nif (daysOverdue === 0) reasons.push(\"Invoice is not overdue\");\nif (!currencyAllowed) reasons.push(\"Currency is outside the configured policy\");\nif (!aboveMinimum) reasons.push(\"Amount is below the configured threshold\");\nreturn { json: {\n  ...data,\n  decision: { eligible, stage, tone, riskScore: Math.min(100, riskScore), daysOverdue, reasons }\n} };"
+      }
+    },
+    {
+      "id": "eligible",
+      "name": "Invoice Eligible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1220,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "eligible-condition",
+              "leftValue": "={{ $json.decision.eligible }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "no-action",
+      "name": "Build No-Action Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        520
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ok: true,\n  status: \"no_action\",\n  correlationId: $json.context.correlationId,\n  idempotencyKey: $json.control.idempotencyKey,\n  invoiceId: $json.invoice.invoiceId,\n  decision: $json.decision,\n  message: \"No reminder was prepared because the invoice did not pass the deterministic policy.\"\n} };"
+      }
+    },
+    {
+      "id": "no-action-response",
+      "name": "Return Policy Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1450,
+        520
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "note-4",
+      "name": "Process 4 - Draft Generation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        -330
+      ],
+      "parameters": {
+        "width": 1220,
+        "height": 650,
+        "color": 4,
+        "content": "## Process 4 — Controlled draft generation\n**Purpose:** create a customer-ready reminder without delegating policy decisions to AI.\n\n**Modes**\n- deterministic template: credential-free and repeatable\n- Claude: optional, grounded only in approved invoice facts\n\n**Reliability**\n- low temperature and bounded output\n- no payment details, penalties, promises, or invented facts\n- AI failure continues to a safe fallback path."
+      }
+    },
+    {
+      "id": "ai-mode",
+      "name": "Claude Enabled?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ai-mode-condition",
+              "leftValue": "={{ $json.request.useAi }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "template",
+      "name": "Build Deterministic Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1790,
+        150
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst amount = new Intl.NumberFormat(\"en-US\", { style: \"currency\", currency: data.invoice.currency }).format(data.invoice.amount);\nconst subject = data.decision.daysOverdue >= 31\n  ? \"Action required: invoice \" + data.invoice.invoiceId\n  : \"Payment reminder: invoice \" + data.invoice.invoiceId;\nconst body = [\n  \"Dear \" + data.invoice.customerName + \",\",\n  \"\",\n  \"This is a reminder that invoice \" + data.invoice.invoiceId + \" for \" + amount + \" was due on \" + data.invoice.dueDate + \". It is currently \" + data.decision.daysOverdue + \" day(s) overdue.\",\n  \"\",\n  \"If payment has already been arranged, please share the remittance details. Otherwise, please confirm the expected payment date.\",\n  \"\",\n  \"Kind regards,\",\n  \"Accounts Receivable Team\"\n].join(\"\\n\");\nreturn { json: { ...data, draft: { subject, body, source: \"deterministic_template\" }, contentCheck: { safe: true, issues: [] } } };"
+      }
+    },
+    {
+      "id": "claude-request",
+      "name": "Build Grounded Claude Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1790,
+        -150
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst facts = {\n  invoiceId: data.invoice.invoiceId,\n  customerName: data.invoice.customerName,\n  amount: data.invoice.amount,\n  currency: data.invoice.currency,\n  dueDate: data.invoice.dueDate,\n  daysOverdue: data.decision.daysOverdue,\n  stage: data.decision.stage,\n  tone: data.decision.tone\n};\nconst prompt = [\n  \"You draft concise business-to-business invoice reminders.\",\n  \"Use only the supplied facts. Do not invent bank details, contacts, penalties, payment plans, legal consequences, promises, or dates.\",\n  \"Return valid JSON only with string fields subject and body.\",\n  \"Keep the body under 220 words and the subject under 120 characters.\",\n  JSON.stringify(facts)\n].join(\"\\n\");\nreturn { json: { ...data, aiRequest: {\n  model: \"claude-3-5-haiku-latest\",\n  max_tokens: 650,\n  temperature: 0.2,\n  messages: [{ role: \"user\", content: prompt }]\n} } };"
+      }
+    },
+    {
+      "id": "claude",
+      "name": "Generate Claude Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2020,
+        -150
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.aiRequest) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "parse-claude",
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2250,
+        -150
+      ],
+      "parameters": {
+        "jsCode": "const base = $(\"Build Grounded Claude Request\").item.json;\ntry {\n  const raw = $json?.content?.[0]?.text;\n  const parsed = JSON.parse(raw);\n  if (typeof parsed.subject !== \"string\" || typeof parsed.body !== \"string\") throw new Error(\"Missing subject or body\");\n  return { json: { ...base, draft: { subject: parsed.subject.trim(), body: parsed.body.trim(), source: \"claude\" } } };\n} catch (error) {\n  return { json: { ...base, draft: null, aiWarning: \"AI response was unavailable or malformed\", contentCheck: { safe: false, issues: [\"AI_RESPONSE_INVALID\"] } } };\n}"
+      }
+    },
+    {
+      "id": "note-5",
+      "name": "Process 5 - Content Assurance",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2760,
+        -330
+      ],
+      "parameters": {
+        "width": 730,
+        "height": 650,
+        "color": 6,
+        "content": "## Process 5 — Content assurance\n**Purpose:** treat generated text as untrusted output.\n\n**Checks**\n- required subject and body\n- length limits\n- invoice reference present\n- no unresolved placeholders\n- no invented bank details\n- escalation language allowed only at the configured stage\n\n**Failure:** discard the AI draft and rebuild from the deterministic template."
+      }
+    },
+    {
+      "id": "screen",
+      "name": "Screen Generated Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2820,
+        -120
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst issues = [];\nconst subject = String(data.draft?.subject || \"\");\nconst body = String(data.draft?.body || \"\");\nconst combined = subject + \"\\n\" + body;\nif (!subject || !body) issues.push(\"MISSING_CONTENT\");\nif (subject.length > 120) issues.push(\"SUBJECT_TOO_LONG\");\nif (body.length > 4000) issues.push(\"BODY_TOO_LONG\");\nif (!combined.includes(data.invoice.invoiceId)) issues.push(\"INVOICE_ID_MISSING\");\nif (/\\[[^\\]]+\\]|\\{\\{[^}]+\\}\\}/.test(combined)) issues.push(\"PLACEHOLDER_PRESENT\");\nif (/bank account|routing number|swift code|iban/i.test(combined)) issues.push(\"UNAPPROVED_PAYMENT_DETAILS\");\nif (data.decision.stage !== \"legal_review\" && /legal action|collection agency|court proceedings/i.test(combined)) issues.push(\"UNAPPROVED_ESCALATION_LANGUAGE\");\nreturn { json: { ...data, contentCheck: { safe: issues.length === 0, issues } } };"
+      }
+    },
+    {
+      "id": "content-safe",
+      "name": "Draft Safe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3050,
+        -120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "content-safe-condition",
+              "leftValue": "={{ $json.contentCheck.safe }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "fallback",
+      "name": "Replace with Safe Template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3280,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst amount = new Intl.NumberFormat(\"en-US\", { style: \"currency\", currency: data.invoice.currency }).format(data.invoice.amount);\nconst subject = data.decision.daysOverdue >= 31\n  ? \"Action required: invoice \" + data.invoice.invoiceId\n  : \"Payment reminder: invoice \" + data.invoice.invoiceId;\nconst body = [\n  \"Dear \" + data.invoice.customerName + \",\",\n  \"\",\n  \"This is a reminder that invoice \" + data.invoice.invoiceId + \" for \" + amount + \" was due on \" + data.invoice.dueDate + \". It is currently \" + data.decision.daysOverdue + \" day(s) overdue.\",\n  \"\",\n  \"If payment has already been arranged, please share the remittance details. Otherwise, please confirm the expected payment date.\",\n  \"\",\n  \"Kind regards,\",\n  \"Accounts Receivable Team\"\n].join(\"\\n\");\nreturn { json: { ...data, draft: { subject, body, source: \"deterministic_template\" }, contentCheck: { safe: true, issues: [] } } };"
+      }
+    },
+    {
+      "id": "note-6",
+      "name": "Process 6 - Human Approval",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3540,
+        -330
+      ],
+      "parameters": {
+        "width": 1080,
+        "height": 650,
+        "color": 7,
+        "content": "## Process 6 — Human approval\n**Purpose:** separate read-only preview from an action request.\n\n**Controls**\n- preview returns the decision, draft, and approval instruction\n- send requires an exact invoice-bound phrase\n- actor authorization was already verified\n- incorrect approval returns HTTP 409\n\n**Production note:** use a durable, expiring, one-time approval record before real delivery."
+      }
+    },
+    {
+      "id": "approval-package",
+      "name": "Prepare Approval Package",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst approvalPhrase = \"APPROVE SEND \" + data.invoice.invoiceId;\nreturn { json: {\n  ...data,\n  approval: {\n    requiredPhrase: approvalPhrase,\n    matched: data.request.action === \"send\" && data.request.approvalPhrase === approvalPhrase,\n    previewGeneratedAt: new Date().toISOString(),\n    expiresInMinutes: 10\n  }\n} };"
+      }
+    },
+    {
+      "id": "preview",
+      "name": "Preview Request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3830,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "preview-condition",
+              "leftValue": "={{ $json.request.action }}",
+              "rightValue": "preview",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "preview-body",
+      "name": "Build Preview Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4060,
+        -150
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ok: true,\n  status: \"preview_ready\",\n  correlationId: $json.context.correlationId,\n  idempotencyKey: $json.control.idempotencyKey,\n  invoice: $json.invoice,\n  decision: $json.decision,\n  draft: $json.draft,\n  contentCheck: $json.contentCheck,\n  approval: {\n    phrase: $json.approval.requiredPhrase,\n    expiresInMinutes: $json.approval.expiresInMinutes,\n    instruction: \"Resubmit with action=send, the same invoice facts, and the exact approval phrase.\"\n  },\n  warning: $json.aiWarning || null\n} };"
+      }
+    },
+    {
+      "id": "preview-response",
+      "name": "Return Preview",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        4290,
+        -150
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "approval",
+      "name": "Exact Approval Phrase?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4060,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "approval-condition",
+              "leftValue": "={{ $json.approval.matched }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "approval-error",
+      "name": "Build Approval Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4290,
+        300
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ok: false,\n  status: \"approval_required\",\n  correlationId: $json.context.correlationId,\n  invoiceId: $json.invoice.invoiceId,\n  requiredApprovalPhrase: $json.approval.requiredPhrase,\n  message: \"The exact invoice-bound approval phrase is required.\"\n} };"
+      }
+    },
+    {
+      "id": "approval-response",
+      "name": "Return HTTP 409",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        4520,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 409
+        }
+      }
+    },
+    {
+      "id": "note-7",
+      "name": "Process 7 - Delivery Safety",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4670,
+        -330
+      ],
+      "parameters": {
+        "width": 950,
+        "height": 650,
+        "color": 5,
+        "content": "## Process 7 — Delivery safety\n**Purpose:** demonstrate a delivery adapter without risking real communication.\n\n**Controls**\n- allow-list restricted to the fictional demo domain\n- normalized outbound envelope\n- no live email node in the public export\n- provider result is explicitly marked simulated\n\n**Production note:** replace with an approved provider, suppression checks, and atomic idempotency."
+      }
+    },
+    {
+      "id": "recipient-policy",
+      "name": "Enforce Demo Recipient Policy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4730,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const data = $json;\nconst domain = data.invoice.customerEmail.split(\"@\")[1] || \"\";\nconst allowed = domain === data.policy.demoRecipientDomain;\nreturn { json: {\n  ...data,\n  deliveryPolicy: {\n    allowed,\n    reason: allowed ? \"Recipient is inside the fictional demonstration domain\" : \"Public safety mode only permits the configured demonstration domain\"\n  }\n} };"
+      }
+    },
+    {
+      "id": "recipient-allowed",
+      "name": "Recipient Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4960,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "recipient-allowed-condition",
+              "leftValue": "={{ $json.deliveryPolicy.allowed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "recipient-error",
+      "name": "Build Recipient Block",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4960,
+        520
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ok: false,\n  status: \"recipient_blocked\",\n  correlationId: $json.context.correlationId,\n  invoiceId: $json.invoice.invoiceId,\n  reason: $json.deliveryPolicy.reason,\n  message: \"No delivery was attempted.\"\n} };"
+      }
+    },
+    {
+      "id": "recipient-response",
+      "name": "Return HTTP 403 - Recipient",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        5190,
+        520
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 403
+        }
+      }
+    },
+    {
+      "id": "envelope",
+      "name": "Prepare Delivery Envelope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5190,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ...$json,\n  deliveryEnvelope: {\n    to: $json.invoice.customerEmail,\n    subject: $json.draft.subject,\n    body: $json.draft.body,\n    messageId: \"demo-\" + $json.context.correlationId + \"-\" + Date.now(),\n    provider: \"simulation\"\n  }\n} };"
+      }
+    },
+    {
+      "id": "simulate",
+      "name": "Simulate Email Provider",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5420,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ...$json,\n  deliveryResult: {\n    accepted: true,\n    simulated: true,\n    providerMessageId: $json.deliveryEnvelope.messageId,\n    completedAt: new Date().toISOString()\n  }\n} };"
+      }
+    },
+    {
+      "id": "note-8",
+      "name": "Process 8 - Audit and Observability",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5670,
+        -330
+      ],
+      "parameters": {
+        "width": 900,
+        "height": 650,
+        "color": 4,
+        "content": "## Process 8 — Audit and observability\n**Purpose:** return evidence suitable for operations and downstream logging.\n\n**Outputs**\n- correlation and idempotency identifiers\n- actor, invoice, policy stage, and risk score\n- approval and draft-source evidence\n- recipient domain only, not the full address\n- execution duration and AI-use indicator\n\nThe public export returns the event; production should persist it centrally."
+      }
+    },
+    {
+      "id": "audit",
+      "name": "Create Structured Audit Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5730,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return { json: {\n  ...$json,\n  auditEvent: {\n    eventType: \"INVOICE_REMINDER_SIMULATED\",\n    correlationId: $json.context.correlationId,\n    requestId: $json.context.requestId,\n    actorId: $json.actor.userId,\n    actorRole: $json.actor.role,\n    invoiceId: $json.invoice.invoiceId,\n    customerId: $json.invoice.customerId,\n    stage: $json.decision.stage,\n    riskScore: $json.decision.riskScore,\n    approvalMatched: true,\n    draftSource: $json.draft.source,\n    recipientDomain: $json.invoice.customerEmail.split(\"@\")[1],\n    occurredAt: new Date().toISOString()\n  }\n} };"
+      }
+    },
+    {
+      "id": "metrics",
+      "name": "Build Execution Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5960,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const started = Date.parse($json.context.receivedAt);\nreturn { json: {\n  ok: true,\n  status: \"simulated_sent\",\n  correlationId: $json.context.correlationId,\n  idempotencyKey: $json.control.idempotencyKey,\n  delivery: $json.deliveryResult,\n  audit: $json.auditEvent,\n  metrics: {\n    durationMs: Math.max(0, Date.now() - started),\n    aiUsed: $json.draft.source === \"claude\",\n    safetyMode: true\n  },\n  message: \"Portfolio safety mode completed successfully; no external email was sent.\"\n} };"
+      }
+    },
+    {
+      "id": "success-response",
+      "name": "Return Controlled Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        6190,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Receive Collection Request": {
+      "main": [
+        [
+          {
+            "node": "Initialize Execution Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Execution Context": {
+      "main": [
+        [
+          {
+            "node": "Validate Request Contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request Contract": {
+      "main": [
+        [
+          {
+            "node": "Contract Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contract Valid?": {
+      "main": [
+        [
+          {
+            "node": "Normalize and Minimize Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Return HTTP 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize and Minimize Data": {
+      "main": [
+        [
+          {
+            "node": "Build Control Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Control Metadata": {
+      "main": [
+        [
+          {
+            "node": "Authorize Requested Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authorize Requested Action": {
+      "main": [
+        [
+          {
+            "node": "Action Authorized?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action Authorized?": {
+      "main": [
+        [
+          {
+            "node": "Apply Collection Policy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Authorization Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Authorization Error": {
+      "main": [
+        [
+          {
+            "node": "Return HTTP 403",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Collection Policy": {
+      "main": [
+        [
+          {
+            "node": "Invoice Eligible?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice Eligible?": {
+      "main": [
+        [
+          {
+            "node": "Claude Enabled?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build No-Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build No-Action Result": {
+      "main": [
+        [
+          {
+            "node": "Return Policy Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Enabled?": {
+      "main": [
+        [
+          {
+            "node": "Build Grounded Claude Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Deterministic Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Grounded Claude Request": {
+      "main": [
+        [
+          {
+            "node": "Generate Claude Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Claude Draft": {
+      "main": [
+        [
+          {
+            "node": "Parse Claude Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Claude Response": {
+      "main": [
+        [
+          {
+            "node": "Screen Generated Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Screen Generated Content": {
+      "main": [
+        [
+          {
+            "node": "Draft Safe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Safe?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approval Package",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace with Safe Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Deterministic Draft": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approval Package",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace with Safe Template": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approval Package",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Approval Package": {
+      "main": [
+        [
+          {
+            "node": "Preview Request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preview Request?": {
+      "main": [
+        [
+          {
+            "node": "Build Preview Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Exact Approval Phrase?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Preview Response": {
+      "main": [
+        [
+          {
+            "node": "Return Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exact Approval Phrase?": {
+      "main": [
+        [
+          {
+            "node": "Enforce Demo Recipient Policy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Approval Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approval Error": {
+      "main": [
+        [
+          {
+            "node": "Return HTTP 409",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enforce Demo Recipient Policy": {
+      "main": [
+        [
+          {
+            "node": "Recipient Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recipient Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Delivery Envelope",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Recipient Block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Recipient Block": {
+      "main": [
+        [
+          {
+            "node": "Return HTTP 403 - Recipient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Delivery Envelope": {
+      "main": [
+        [
+          {
+            "node": "Simulate Email Provider",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulate Email Provider": {
+      "main": [
+        [
+          {
+            "node": "Create Structured Audit Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Structured Audit Event": {
+      "main": [
+        [
+          {
+            "node": "Build Execution Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Execution Metrics": {
+      "main": [
+        [
+          {
+            "node": "Return Controlled Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "3a32a43e-5358-46b6-b454-e9ee85d61f58",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
