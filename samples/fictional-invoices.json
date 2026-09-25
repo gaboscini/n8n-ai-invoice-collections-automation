@@ -1,0 +1,98 @@
+[
+  {
+    "invoiceId": "DEMO-2026-1001",
+    "customerId": "CUST-001",
+    "customerName": "Northstar Office Supply",
+    "customerEmail": "accounts@northstar.example.com",
+    "amountUsd": 18500,
+    "dueDate": "2026-07-20",
+    "status": "OPEN",
+    "disputeStatus": "NONE",
+    "owner": "Jordan Lee",
+    "region": "North"
+  },
+  {
+    "invoiceId": "DEMO-2026-1002",
+    "customerId": "CUST-002",
+    "customerName": "Harborline Retail",
+    "customerEmail": "finance@harborline.example.com",
+    "amountUsd": 63800,
+    "dueDate": "2026-07-24",
+    "status": "OPEN",
+    "disputeStatus": "NONE",
+    "owner": "Morgan Chen",
+    "region": "East"
+  },
+  {
+    "invoiceId": "DEMO-2026-1003",
+    "customerId": "CUST-003",
+    "customerName": "BluePeak Manufacturing",
+    "customerEmail": "ap@bluepeak.example.com",
+    "amountUsd": 27400,
+    "dueDate": "2026-08-12",
+    "status": "OPEN",
+    "disputeStatus": "NONE",
+    "owner": "Jordan Lee",
+    "region": "West"
+  },
+  {
+    "invoiceId": "DEMO-2026-1004",
+    "customerId": "CUST-004",
+    "customerName": "Greenfield Foods",
+    "customerEmail": "payments@greenfield.example.com",
+    "amountUsd": 9200,
+    "dueDate": "2026-08-30",
+    "status": "OPEN",
+    "disputeStatus": "NONE",
+    "owner": "Taylor Reyes",
+    "region": "South"
+  },
+  {
+    "invoiceId": "DEMO-2026-1005",
+    "customerId": "CUST-005",
+    "customerName": "Cedar Works",
+    "customerEmail": "ap@cedarworks.example.com",
+    "amountUsd": 34600,
+    "dueDate": "2026-09-09",
+    "status": "DISPUTED",
+    "disputeStatus": "DISPUTED",
+    "owner": "Morgan Chen",
+    "region": "East"
+  },
+  {
+    "invoiceId": "DEMO-2026-1006",
+    "customerId": "CUST-001",
+    "customerName": "Northstar Office Supply",
+    "customerEmail": "accounts@northstar.example.com",
+    "amountUsd": 7800,
+    "dueDate": "2026-09-15",
+    "status": "OPEN",
+    "disputeStatus": "NONE",
+    "owner": "Jordan Lee",
+    "region": "North"
+  },
+  {
+    "invoiceId": "DEMO-2026-1007",
+    "customerId": "CUST-006",
+    "customerName": "Summit Industrial Services",
+    "customerEmail": "billing@summit.example.com",
+    "amountUsd": 41200,
+    "dueDate": "2026-09-28",
+    "status": "OPEN",
+    "disputeStatus": "NONE",
+    "owner": "Taylor Reyes",
+    "region": "South"
+  },
+  {
+    "invoiceId": "DEMO-2026-1008",
+    "customerId": "CUST-007",
+    "customerName": "Maple Ridge Distribution",
+    "customerEmail": "finance@mapleridge.example.com",
+    "amountUsd": 15600,
+    "dueDate": "2026-06-18",
+    "status": "PAID",
+    "disputeStatus": "NONE",
+    "owner": "Morgan Chen",
+    "region": "East"
+  }
+]

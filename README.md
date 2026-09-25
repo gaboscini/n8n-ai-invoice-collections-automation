@@ -1,603 +1,308 @@
 # n8n AI Invoice Collections Automation
 
-An enterprise-style n8n portfolio project that demonstrates controlled invoice follow-up automation using deterministic financial rules, optional Claude-assisted drafting, explicit human approval, delivery safeguards, structured audit output, and a separate error-handling workflow.
+An enterprise-style portfolio workflow that combines n8n, Amazon S3, Amazon DynamoDB, Amazon Bedrock, Gmail, deterministic collection policy, human approval, audit evidence, and operational error handling.
 
-This repository is an independently created technical demonstration. It uses fictional organizations, users, customers, invoices, addresses, and execution data. It is not copied from, connected to, or derived from an employer or client system.
-
-> **Portfolio safety:** The public workflow does not send email. It simulates the provider handoff and returns the audit evidence that a production integration would persist.
+The repository uses fictional data and generic infrastructure names. It is an independent portfolio implementation and does not contain customer workflows, credentials, private endpoints, or proprietary datasets.
 
 ## Executive summary
 
-Accounts Receivable teams often repeat the same operational steps:
+The workflow automates a controlled business-to-business invoice collection process:
 
-1. confirm that invoice data is complete and trustworthy;
-2. determine whether the invoice is actually eligible for follow-up;
-3. choose an appropriate reminder stage and tone;
-4. draft a customer-facing message;
-5. obtain approval for external communication;
-6. send through an approved provider;
-7. retain enough evidence to explain what happened;
-8. alert operations when the automation fails.
+1. A daily schedule downloads an invoice aging feed from Amazon S3.
+2. n8n extracts and processes invoice records in bounded batches.
+3. DynamoDB supplies the latest collection state for each invoice.
+4. Deterministic rules select no action, customer reminder, escalation, payment confirmation, or manual review.
+5. Amazon Bedrock drafts grounded reminder content only after policy selection.
+6. Unsafe AI output is replaced with a deterministic template.
+7. Low-risk reminders can continue to the configured email node; high-risk reminders enter human approval.
+8. Gmail nodes handle customer reminders, confirmations, internal approvals, exceptions, completion summaries, and failure alerts.
+9. DynamoDB records state, approvals, audits, and incidents.
+10. S3 stores delivery evidence and run reports.
 
-This project models those responsibilities as explicit n8n stages. AI is intentionally limited to language drafting. Payment status, days overdue, authorization, eligibility, risk score, approval, recipient policy, and delivery state remain deterministic and inspectable.
+The same canvas also includes a conversational invoice-operations agent, self-referencing n8n tools, a one-time approval API, and workflow-level error handling.
 
-The result is not presented as a production-ready collections platform. It is a reference implementation showing how production concerns can be represented honestly in an automation workflow without hiding critical decisions inside an LLM prompt.
+## Why this workflow is portfolio-quality
 
-## What this project demonstrates
+The canvas demonstrates practical use of native n8n capabilities rather than hiding the implementation inside JavaScript:
 
-### Workflow engineering
+| Capability | Implementation |
+|---|---|
+| File ingestion | Schedule Trigger, AWS S3, Extract From File |
+| Batch processing | Loop Over Items |
+| State retrieval | AWS DynamoDB Get operations |
+| State and audit writes | AWS DynamoDB Insert operations |
+| Data preparation | Edit Fields / Set nodes |
+| Branching | If and Switch nodes |
+| Multi-source combination | Merge node |
+| AI orchestration | n8n AI Agent with Amazon Bedrock, bounded memory, durable session context, and governed tools |
+| Controlled notifications | Gmail nodes for customer and internal events |
+| Artifacts and reporting | Aggregate, Convert to File, and AWS S3 upload |
+| Human approval | Webhook, exact-phrase check, recipient gate, one-time approval state |
+| Failure operations | Error Trigger, redaction, incident storage, operations email |
+| Visual documentation | Ten non-overlapping Sticky Note sections |
 
-- Webhook contract design and correlation identifiers
-- Defensive schema validation and payload-size controls
-- Data normalization, minimization, and bounded strings
-- Deterministic authorization and collection-policy decisions
-- Explainable invoice eligibility and risk scoring
-- Branch-specific HTTP responses
-- A separate n8n Error Trigger workflow
-- Readable canvas layout with colored process documentation
+The generated export contains 104 nodes: 94 functional nodes and 10 background section notes. It uses 19 DynamoDB nodes, 4 S3 nodes, 8 Gmail nodes, and only 4 Code nodes.
 
-### Applied AI controls
+## Why four Code nodes remain
 
-- Claude used only for customer-facing language generation
-- Grounding with a restricted set of approved invoice facts
-- Low-temperature, bounded generation
-- JSON-only output contract
-- Post-generation content screening
-- Deterministic fallback when AI is disabled or unsafe
-- No AI authority over payment, eligibility, escalation, or delivery
+Native n8n nodes are used wherever they clearly fit. JavaScript remains only where a native replacement would make the workflow less reliable or less understandable:
 
-### Enterprise delivery controls
+1. **Calculate Aging and Collection Rule** performs date arithmetic and a multi-factor collection decision in one auditable policy function.
+2. **Parse and Screen AI Draft** extracts the subject and body, applies size limits, and rejects prohibited content.
+3. **Filter and Summarize Portfolio** applies optional agent-provided filters and returns bounded, calculated portfolio results from the current S3 feed.
+4. **Redact Error Context** removes token-like values and creates a bounded incident record before storage or notification.
 
-- Actor-role authorization
-- Explicit preview-versus-send separation
-- Exact invoice-bound approval phrase
-- Recipient-domain allow-list in public safety mode
-- Idempotency metadata for downstream enforcement
-- Structured audit events and execution metrics
-- Redaction before incident classification and alert preparation
-- Credential-free, inactive public exports
-- Continuous integration that rebuilds and validates exports on every push and pull request
+No Code node simulates S3, DynamoDB, email, batching, merging, routing, reporting, or webhook responses.
 
 ## Repository contents
 
 ```text
-n8n-ai-invoice-collections-automation/
-|-- README.md
-|-- LICENSE
-|-- package.json
-|-- .env.example
-|-- .gitignore
-|-- .gitattributes
-|-- .github/
-|   `-- workflows/validate.yml
+.
 |-- workflows/
-|   |-- ai-invoice-collections-automation.json
-|   `-- execution-error-handler.json
-|-- samples/
-|   |-- preview-request.json
-|   |-- approved-send-request.json
-|   |-- invalid-request.json
-|   `-- paid-invoice-request.json
+|   `-- ai-invoice-collections-automation.json
 |-- scripts/
-|   |-- build-workflow.mjs
+|   |-- build-combined-workflow.mjs
 |   `-- validate-workflow.mjs
-`-- docs/
-    |-- ARCHITECTURE.md
-    |-- TESTING.md
-    |-- DEMO_GUIDE.md
-    `-- SECURITY.md
+|-- samples/
+|   |-- fictional-invoices.json
+|   |-- daily-invoice-aging.csv
+|   |-- approval-request.json
+|   `-- agent-demo-prompts.md
+|-- docs/
+|   |-- ARCHITECTURE.md
+|   |-- AWS_SETUP.md
+|   |-- DEMO_GUIDE.md
+|   |-- SECURITY.md
+|   `-- TESTING.md
+|-- .github/workflows/validate.yml
+|-- package.json
+`-- LICENSE
 ```
 
-## Workflow portfolio
-
-### 1. Invoice collections orchestration
-
-`workflows/ai-invoice-collections-automation.json`
-
-The main workflow accepts a request to preview or simulate an approved invoice reminder. It is divided into eight documented processes:
-
-| Process | Responsibility | Main controls |
-|---|---|---|
-| 1. Request intake | Establish execution context | Correlation ID, request ID, version, safety mode |
-| 2. Contract validation | Reject untrusted input | Required fields, size, dates, amount, email, roles |
-| 3. Authorization and policy | Decide whether action is allowed | Role permissions, status exclusions, aging, threshold, currency |
-| 4. Draft generation | Produce reminder language | Deterministic template or grounded Claude request |
-| 5. Content assurance | Treat AI output as untrusted | Length, placeholders, invoice reference, payment details, escalation language |
-| 6. Human approval | Separate preview from action | Exact invoice-bound phrase and prior actor authorization |
-| 7. Delivery safety | Prevent accidental communication | Fictional-domain allow-list and simulated provider |
-| 8. Audit and observability | Return operational evidence | Actor, decision, risk, approval, source, duration, correlation |
-
-### 2. Execution error handling
-
-`workflows/execution-error-handler.json`
-
-The supporting workflow uses n8n's Error Trigger to model a controlled operational response:
-
-1. capture failed execution metadata;
-2. redact email addresses and credential-like values;
-3. classify severity and retry guidance deterministically;
-4. construct a minimal alert payload;
-5. return an audit-friendly incident record.
-
-The public export simulates alert delivery. Production implementations should connect an approved service such as Microsoft Teams, Slack, PagerDuty, or an enterprise incident platform only after governance and credential controls are established.
-
-## Architecture
+## Workflow architecture
 
 ```mermaid
 flowchart LR
-    subgraph Intake[1. Intake]
-        W[Webhook] --> C[Execution context]
-    end
+    S[Daily schedule] --> S3[(S3 invoice feed)]
+    S3 --> X[Extract CSV]
+    X --> L[Batch invoices]
+    L --> N[Normalize invoice]
+    N --> D1[(DynamoDB state)]
+    N --> M[Merge invoice and state]
+    D1 --> M
+    M --> P[Deterministic aging policy]
+    P --> R{Collection action}
 
-    subgraph Validation[2. Validation]
-        C --> V[Validate contract]
-        V -->|Invalid| H400[HTTP 400]
-        V -->|Valid| N[Normalize and minimize]
-        N --> F[Control metadata]
-    end
+    R -->|Reminder or escalation| AI[Bedrock drafting agent]
+    AI --> G{Content safe?}
+    G -->|No| T[Safe template]
+    G -->|Yes| E[Prepared email]
+    T --> E
+    E --> A{Approval required?}
+    A -->|Yes| Q[(Approval queue)]
+    A -->|No| GM[Gmail customer reminder]
 
-    subgraph Policy[3. Authorization and policy]
-        F --> A[Authorize action]
-        A -->|Forbidden| H403[HTTP 403]
-        A --> P[Collection policy]
-        P -->|Not eligible| NA[No action]
-    end
+    R -->|Paid| PC[Gmail payment confirmation]
+    R -->|Disputed or exceptional| MR[Gmail manual review alert]
+    R -->|No action| NA[Audit no action]
 
-    subgraph Drafting[4. Draft generation]
-        P -->|Eligible| M{Claude enabled?}
-        M -->|No| T[Deterministic template]
-        M -->|Yes| G[Grounded Claude request]
-        G --> L[Claude]
-        L --> J[Parse JSON]
-    end
+    GM --> EV[S3 delivery evidence]
+    EV --> DS[(DynamoDB state and audit)]
+    PC --> DS
+    MR --> DS
+    NA --> L
+    DS --> L
 
-    subgraph Assurance[5. Content assurance]
-        J --> S[Screen content]
-        S -->|Unsafe| T2[Safe template replacement]
-    end
-
-    subgraph Approval[6. Human approval]
-        T --> AP[Approval package]
-        T2 --> AP
-        S -->|Safe| AP
-        AP -->|Preview| PR[Return preview]
-        AP -->|Send| X{Exact phrase?}
-        X -->|No| H409[HTTP 409]
-    end
-
-    subgraph Delivery[7. Delivery safety]
-        X -->|Yes| R{Recipient allowed?}
-        R -->|No| RB[Recipient blocked]
-        R -->|Yes| E[Delivery envelope]
-        E --> SIM[Provider simulation]
-    end
-
-    subgraph Audit[8. Audit and observability]
-        SIM --> AU[Audit event]
-        AU --> MT[Execution metrics]
-        MT --> OK[Controlled response]
-    end
+    L -->|Batch complete| RP[S3 run report]
+    RP --> SM[Gmail operations summary]
 ```
 
-See [Architecture and Design Decisions](docs/ARCHITECTURE.md) for trust boundaries, decision ownership, idempotency limitations, and the production-hardening plan.
+### Conversational agent
 
-## Business rules
+The chat lane is deliberately separate from the scheduled automation. It combines a 12-turn memory window with a compact DynamoDB session record so follow-ups remain understandable across executions. The agent can call three governed tools:
 
-### Role permissions
+- **Portfolio Search** reads the current S3 feed for totals, lists, comparisons, customer searches, owner searches, and aging filters.
+- **Invoice State Lookup** retrieves current invoice state from DynamoDB.
+- **Reminder Preview** verifies that an invoice is eligible and returns a preview without sending.
 
-| Role | Preview | Simulated send |
-|---|---:|---:|
-| `ar_analyst` | Yes | No |
-| `ar_manager` | Yes | Yes, with exact approval |
-| `finance_admin` | Yes | Yes, with exact approval |
+Both tools call the same imported workflow through one **Execute Workflow Trigger**. After import, replace the visible `REPLACE_WITH_THIS_WORKFLOW_ID` values with the imported workflow ID.
 
-### Invoice exclusions
+Conversation context resolves references such as “that invoice” or “the largest one,” but it is not treated as evidence for current amounts, status, eligibility, recipients, or approval. Those facts must be refreshed through a tool.
 
-No reminder is prepared when any of the following applies:
+### Scheduled collections pipeline
 
-- status is `PAID`, `SETTLED`, `CLOSED`, or `VOID`;
-- status or dispute status is `DISPUTED` or `ON_HOLD`;
-- the invoice is not overdue;
-- the currency is outside the configured policy;
-- the amount is below the configured minimum.
+The scheduled lane expects a CSV file at:
 
-### Demonstration aging policy
+```text
+s3://invoice-collections-portfolio-demo/incoming/daily-invoice-aging.csv
+```
 
-| Days overdue | Stage | Tone | Base risk score |
-|---:|---|---|---:|
-| 0 | Current | Informational | 0 |
-| 1–14 | Early follow-up | Friendly | 15 |
-| 15–30 | Payment reminder | Professional | 30 |
-| 31–60 | Manager review | Firm | 50 |
-| 61+ | Legal review | Firm | 70 |
+Each invoice is normalized, enriched with DynamoDB state, evaluated by deterministic policy, and routed to the appropriate branch. The workflow processes 25 records per batch.
 
-Risk adds 10 points for invoices of at least 10,000 and 20 points for invoices of at least 50,000, capped at 100.
+### Collection policy
 
-These thresholds are portfolio assumptions. They are not legal, accounting, or credit-control advice and should not be reused without business approval.
+The demonstration policy is intentionally transparent:
 
-## Why AI does not make the collection decision
-
-Large language models are useful for tone, clarity, summarization, and drafting. They are not the authoritative source for whether an invoice is paid, disputed, overdue, eligible, or approved for communication.
-
-This workflow therefore separates responsibilities:
-
-| Decision | Owner |
+| Condition | Result |
 |---|---|
-| Invoice facts | Supplied business record |
-| Days overdue | Deterministic date calculation |
-| Eligibility | Deterministic collection policy |
-| Actor permission | Deterministic role policy |
-| Risk score | Deterministic rules |
-| Reminder language | Template or Claude |
-| Content acceptance | Deterministic screen plus human review |
-| Send approval | Authorized human |
-| Delivery result | Approved provider adapter |
+| Paid and confirmation not yet recorded | Payment confirmation |
+| Disputed or exception status | Manual review |
+| At least 60 days overdue or at least USD 25,000 | Internal escalation and human approval |
+| Due within seven days or already overdue | Customer reminder |
+| Anything else | No action, audited |
 
-This design keeps business decisions explainable and limits the cost of an incorrect or malformed AI response.
+The AI model does not choose these outcomes.
 
-## AI grounding and content assurance
+### AI drafting and fallback
 
-Claude receives only:
+Amazon Bedrock receives only the approved invoice fields needed for a reminder. It is instructed not to add bank details, fees, penalties, legal claims, or unavailable facts.
 
-- invoice number;
-- customer name;
-- amount and currency;
-- due date;
-- calculated days overdue;
-- approved stage and tone.
+The draft guard checks:
 
-The model is explicitly prohibited from inventing:
+- subject and body presence;
+- maximum lengths;
+- placeholders;
+- payment-routing language;
+- unsupported penalties or legal-action language.
 
-- bank details or payment instructions;
-- customer contacts;
-- penalties, interest, or fees;
-- payment plans or promises;
-- legal consequences;
-- dates that were not provided.
+If the result fails, the workflow uses a deterministic reminder template.
 
-After generation, the workflow checks:
+### Email events
 
-- subject and body are present;
-- length limits are respected;
-- invoice number remains present;
-- no unresolved template placeholders exist;
-- no bank-account or routing language appears;
-- legal escalation language appears only at the legal-review stage.
+The workflow contains real n8n Gmail nodes for meaningful business events only:
 
-If the response is missing, malformed, or fails screening, it is discarded and replaced by the deterministic template.
+- customer payment reminder;
+- approval request for a high-risk reminder;
+- approved customer reminder;
+- payment confirmation;
+- manual-review alert;
+- daily operations summary;
+- workflow-failure alert.
 
-## Request contract
+The public export is inactive and has no credentials. Static internal recipients use `example.com`, and the approval API blocks customer recipients outside `example.com`. Replace these controls only in a private environment with approved contacts, suppression rules, and governance.
 
-### Required top-level fields
+### State and audit design
 
-| Field | Type | Purpose |
+The example uses five generic DynamoDB tables:
+
+| Table | Purpose | Suggested partition key |
 |---|---|---|
-| `requestId` | string | Correlation and operational traceability |
-| `action` | `preview` or `send` | Requested workflow behavior |
-| `actor` | object | User identity and role used for authorization |
-| `invoice` | object | Invoice and customer facts |
+| `invoice_collections_state_demo` | Current invoice collection state | `invoiceId` |
+| `invoice_collections_approvals_demo` | Pending and consumed approvals | `approvalId` |
+| `invoice_collections_audit_demo` | Immutable business events | `invoiceId`, with `eventAt` as sort key |
+| `invoice_collections_incidents_demo` | Redacted workflow failures | `incidentId` |
+| `invoice_collections_agent_sessions_demo` | Compact durable chat context | `sessionId` |
 
-### Optional fields
+See [AWS setup](docs/AWS_SETUP.md) for the demonstration configuration.
 
-| Field | Type | Default |
-|---|---|---|
-| `useAi` | boolean | `false` |
-| `approvalPhrase` | string | empty |
-| `asOfDate` | `YYYY-MM-DD` | current UTC date |
-| `policy.minimumAmount` | number | `25` |
-| `policy.allowedCurrencies` | string array | demonstration currency list |
-| `policy.demoRecipientDomain` | string | `example.com` |
+## Human approval flow
 
-### Example preview request
+High-risk reminders are queued instead of sent. The approval email contains an execution-bound phrase:
 
-```json
-{
-  "requestId": "demo-preview-001",
-  "action": "preview",
-  "useAi": false,
-  "asOfDate": "2026-09-19",
-  "actor": {
-    "userId": "analyst-demo-01",
-    "role": "ar_analyst"
-  },
-  "invoice": {
-    "invoiceId": "INV-DEMO-1042",
-    "customerId": "CUS-DEMO-204",
-    "customerName": "Northstar Office Supply",
-    "customerEmail": "accounts.payable@example.com",
-    "amount": 18450,
-    "currency": "USD",
-    "dueDate": "2026-08-05",
-    "status": "OPEN",
-    "disputeStatus": "NONE"
-  }
-}
+```text
+APPROVE COLLECTION <invoiceId> <approvalId>
 ```
 
-## Response patterns
+The approval webhook independently checks:
 
-| HTTP status | Workflow status | Meaning |
-|---:|---|---|
-| 200 | `preview_ready` | Draft and approval instruction returned |
-| 200 | `no_action` | Policy excluded the invoice |
-| 200 | `simulated_sent` | Approval passed and provider simulation completed |
-| 400 | `validation_failed` | Contract rejected before policy or AI |
-| 403 | `forbidden` | Actor cannot perform the action |
-| 403 | `recipient_blocked` | Recipient is outside the public demonstration allow-list |
-| 409 | `approval_required` | Exact invoice-bound approval phrase missing |
+1. the approval exists;
+2. its status is `PENDING`;
+3. the full phrase matches exactly;
+4. the recipient passes portfolio safety policy;
+5. the approval is marked `USED` after delivery.
+
+This is a demonstration pattern. A production version should also enforce expiry and conditional writes so concurrent requests cannot consume the same approval twice.
 
 ## Quick start
 
 ### Prerequisites
 
-- An n8n environment used only for testing or portfolio development
-- Node.js 20 or later for repository validation
-- Optional Anthropic API access if testing the Claude branch
+- n8n with the AWS, Gmail, and AI/LangChain nodes used by the export;
+- Node.js 20 or later for static repository checks;
+- a non-production AWS account if running S3, DynamoDB, or Bedrock tests;
+- a non-production Gmail OAuth credential if testing notification nodes.
 
-### 1. Build and validate exports
-
-```powershell
-npm run build
-npm test
-```
-
-The test suite verifies:
-
-- both workflow files parse;
-- every Code node compiles;
-- every connection resolves to an existing node;
-- required enterprise control stages are present;
-- the main workflow includes at least eight process notes;
-- functional nodes do not overlap;
-- exports are inactive;
-- no credential object or likely secret is embedded.
-
-The included GitHub Actions workflow repeats the build and validation on every push and pull request, and fails if generated exports are not committed consistently.
-
-### 2. Import into n8n
-
-Import both files:
-
-1. `workflows/ai-invoice-collections-automation.json`
-2. `workflows/execution-error-handler.json`
-
-Keep both inactive until the test scenarios pass.
-
-### 3. Test without Claude
-
-Start the main workflow in test mode, copy its test webhook URL, and send the preview sample:
+### Build and validate
 
 ```powershell
-$body = Get-Content -Raw ".\samples\preview-request.json"
-
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "PASTE_TEST_WEBHOOK_URL_HERE" `
-  -ContentType "application/json" `
-  -Body $body
+npm.cmd run build
+npm.cmd test
 ```
 
-Expected behavior:
+The validator checks node types, connections, Code-node compilation, layout, generic infrastructure names, sample safety, secret patterns, and the absence of embedded credentials.
 
-- validation succeeds;
-- the deterministic policy classifies the invoice;
-- the template branch runs;
-- a preview and approval phrase are returned;
-- no external email is sent.
+### Import into n8n
 
-### 4. Configure Claude optionally
+Import:
 
-Create an n8n **Header Auth** credential using:
-
-- Header name: `x-api-key`
-- Header value: your Anthropic API key
-
-Assign it to **Generate Claude Draft**. Never paste the key into the workflow JSON, a Code node, a screenshot, or source control.
-
-Set `useAi` to `true` and repeat the preview test. Review the content-screening output and draft source.
-
-### 5. Test human approval
-
-Run the approved sample:
-
-```powershell
-$body = Get-Content -Raw ".\samples\approved-send-request.json"
-
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "PASTE_TEST_WEBHOOK_URL_HERE" `
-  -ContentType "application/json" `
-  -Body $body
+```text
+workflows/ai-invoice-collections-automation.json
 ```
 
-Expected status: `simulated_sent`.
+Keep the workflow inactive while configuring it.
 
-The result must explicitly say that no external email was sent.
+### Configure the imported workflow
 
-## Test matrix
+1. Select a non-production AWS credential on all S3, DynamoDB, and Bedrock nodes.
+2. Select a non-production Gmail OAuth credential on all Gmail nodes.
+3. Create the generic demonstration bucket and tables documented in `docs/AWS_SETUP.md`.
+4. Upload `samples/daily-invoice-aging.csv` to the expected S3 key.
+5. Replace both self-workflow placeholders with the imported workflow ID.
+6. Review all static recipients and the `example.com` recipient gate.
+7. Execute individual branches manually before enabling the schedule or webhook.
 
-| Scenario | Sample or change | Expected path |
-|---|---|---|
-| Valid preview | `preview-request.json` | Template → preview |
-| AI preview | Preview sample with `useAi: true` | Claude → screening → preview |
-| Authorized send | `approved-send-request.json` | Approval → allow-list → simulation → audit |
-| Analyst attempts send | Change approved sample role to `ar_analyst` | HTTP 403 authorization |
-| Incorrect approval | Change one character in `approvalPhrase` | HTTP 409 |
-| Invalid contract | `invalid-request.json` | HTTP 400 before policy and AI |
-| Paid invoice | `paid-invoice-request.json` | No-action policy result |
-| Disputed invoice | Set `disputeStatus: DISPUTED` | No-action policy result |
-| Below threshold | Set amount below `minimumAmount` | No-action policy result |
-| Recipient outside allow-list | Use a non-`example.com` address during send | HTTP 403 recipient block |
-| Unsafe AI text | Pin a response containing placeholders or bank details | Deterministic replacement |
-| Workflow execution error | Trigger a controlled node failure | Error workflow redacts and classifies |
+## Demonstration sequence
 
-See [Testing](docs/TESTING.md) for the detailed validation procedure.
+1. Open the workflow and show the ten documented sections.
+2. Run the S3 intake with the fictional CSV.
+3. Show DynamoDB enrichment and deterministic action routing.
+4. Compare an AI draft with the safe fallback branch.
+5. Show the customer-reminder, payment-confirmation, and manual-review Gmail nodes.
+6. Demonstrate that high-risk reminders enter the approval queue.
+7. Submit an incorrect approval phrase, then a correct phrase using fictional data.
+8. Show the S3 evidence file, DynamoDB audit item, run report, and operations summary.
+9. Trigger a controlled failure and show redaction before incident storage and notification.
+10. Ask the conversational agent for one invoice and show that it uses the DynamoDB tool.
 
-## Security model
+The Error Trigger lane is kept on the integrated canvas for portfolio readability. To execute it in n8n, duplicate that lane into a separate workflow and configure it as the main workflow's error workflow; an Error Trigger cannot catch failures from its own containing workflow.
 
-### Included controls
+See [Demonstration Guide](docs/DEMO_GUIDE.md) for the detailed walkthrough.
 
-- inactive exports;
-- no embedded credential objects;
-- request-size limit;
-- input validation and bounded values;
-- role-based action authorization;
-- deterministic policy decisions;
-- content screening;
-- human approval;
-- recipient allow-list;
-- redaction in the error workflow;
-- simulated external actions;
-- correlation and audit metadata.
+## Security and portfolio boundaries
 
-### Deliberately excluded from the public demo
+Included controls:
 
-- customer or employee data;
-- company domains and identifiers;
-- production webhooks;
-- email-provider credentials;
-- live message delivery;
-- durable approval or idempotency storage;
-- tenant authentication;
-- internal prompts or business policy;
-- cloud infrastructure configuration.
+- inactive export;
+- no embedded credentials or private endpoints;
+- fictional data and `example.com` recipients;
+- deterministic financial and collection policy;
+- bounded conversational memory;
+- grounded model prompts;
+- AI-output screening and safe fallback;
+- exact human approval;
+- recipient restriction;
+- structured state and audit storage;
+- failure redaction before storage and email.
 
-See [Security Notes](docs/SECURITY.md).
+Not claimed:
 
-## Idempotency and replay protection
+- deployed AWS infrastructure;
+- completed n8n runtime tests;
+- production-grade email suppression or consent management;
+- atomic approval consumption;
+- authenticated or tenant-aware webhook ingress;
+- regulatory or legal approval for collection language;
+- production monitoring, backup, retention, or disaster recovery.
 
-The main workflow emits an idempotency key composed from:
-
-- invoice ID;
-- action;
-- evaluation date;
-- actor ID.
-
-This makes intended duplicate detection visible to downstream systems. The public demo does not claim to enforce uniqueness because that requires a durable, atomic store.
-
-A production design should reserve the key before delivery using a transactional database or an equivalent strongly consistent mechanism, reject duplicates, and record the provider result against the same key.
-
-## Observability
-
-The successful simulated-send response includes:
-
-- correlation ID;
-- idempotency key;
-- simulated provider result;
-- actor ID and role;
-- invoice and customer identifiers;
-- collection stage and risk score;
-- approval result;
-- draft source;
-- recipient domain rather than full address;
-- execution duration;
-- AI-use indicator.
-
-The error workflow returns:
-
-- incident ID;
-- workflow and execution identifiers;
-- last executed node;
-- redacted error message;
-- severity;
-- retry recommendation;
-- simulated alert payload.
-
-## Production hardening roadmap
-
-Before using this design with real customers, implement and validate:
-
-### Identity and access
-
-- authenticated webhook ingress;
-- tenant isolation and server-controlled actor identity;
-- centrally managed role permissions;
-- short-lived authorization for external actions;
-- separation of duties for high-risk collection stages.
-
-### Data and state
-
-- durable, expiring, one-time approval records;
-- atomic idempotency enforcement;
-- authoritative invoice lookup instead of trusting supplied status;
-- immutable audit storage;
-- retention, deletion, and regional data-residency controls.
-
-### Delivery
-
-- approved email provider;
-- recipient suppression and consent checks;
-- bounced-address and complaint handling;
-- delivery-status reconciliation;
-- rate limits and customer-level communication frequency controls.
-
-### AI governance
-
-- approved model and region;
-- prompt and model versioning;
-- token and cost monitoring;
-- evaluation dataset and regression tests;
-- human review policies by stage and risk;
-- content retention and provider privacy review.
-
-### Reliability
-
-- gateway payload and request-rate limits;
-- queue-based delivery isolation;
-- retries with backoff only for safe operations;
-- circuit breaking and provider timeout policy;
-- centralized logs, metrics, traces, and alerts;
-- recovery procedures and dead-letter handling.
-
-### Business governance
-
-- approved aging thresholds and communication templates;
-- jurisdiction-specific legal review;
-- dispute and hardship handling;
-- documented ownership for policy changes;
-- measurable operational success criteria.
-
-## Design trade-offs
-
-### Why a webhook instead of a schedule?
-
-The workflow demonstrates a reusable orchestration contract that can be called by a CRM, finance system, portal, or scheduled upstream process. A production solution could add a scheduler, but data retrieval and authorization would still need an authoritative system boundary.
-
-### Why include a deterministic template?
-
-It keeps the workflow testable without AI credentials, provides continuity during model failure, and creates a known-safe replacement when generated content fails screening.
-
-### Why simulate delivery?
-
-A public repository should be safe to import. Real email delivery would require credentials, recipient governance, suppression rules, provider error handling, and potentially sensitive execution evidence. Simulation demonstrates the control flow without encouraging unsafe use.
-
-### Why not call the workflow “fully production-ready”?
-
-The repository intentionally lacks durable approval storage, atomic idempotency, authoritative invoice retrieval, tenant authentication, live delivery, and centralized monitoring. Calling it production-ready would hide material gaps. The project instead demonstrates how those boundaries should be documented and where they belong.
-
-## Demonstration guidance
-
-A strong five-minute walkthrough should show:
-
-1. the eight colored process areas on the main canvas;
-2. validation stopping malformed input before AI;
-3. deterministic policy excluding a paid invoice;
-4. template and Claude drafting modes;
-5. content screening and fallback;
-6. exact approval rejection and acceptance;
-7. recipient allow-list protection;
-8. audit and metrics output;
-9. the separate redacted error-handling workflow;
-10. honest production-hardening boundaries.
-
-See [Demonstration Guide](docs/DEMO_GUIDE.md).
+The repository demonstrates design and static validation. Runtime behavior must be verified in the reviewer’s own non-production n8n and AWS environment.
 
 ## Current validation status
 
-Repository-level checks validate workflow structure, JavaScript compilation, connections, notes, layout spacing, inactive status, and credential safety.
+Static build and validation pass locally. The generated export contains one integrated workflow, 104 valid nodes, 10 background notes, 4 Code nodes, resolved connections, increased title spacing, no functional overlaps, no embedded credentials, and no detected proprietary identifiers or likely secrets.
 
-Runtime evidence must be added only after the workflows are imported into an actual n8n workspace and the scenarios are executed. This repository intentionally distinguishes static validation from observed runtime behavior.
+Runtime import and scenario execution remain intentionally unverified until configured in an actual n8n workspace.
 
 ## Author
 
-Built by Gabrielle Faurillo as an independent n8n and AI automation portfolio project.
+Gabrielle Faurillo<br>
+AI automation, cloud solution design, and enterprise workflow engineering

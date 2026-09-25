@@ -2,76 +2,63 @@
 
 ## Scope
 
-This repository contains a generic portfolio architecture for controlled business-to-business invoice follow-up. The main workflow accepts one invoice request, validates and minimizes it, authorizes the requested action, applies deterministic collection policy, optionally asks Claude to draft customer-facing language, screens generated content, requires explicit approval, applies a recipient policy, and produces audit evidence. A separate Error Trigger workflow redacts and classifies failed executions.
+The project demonstrates an AI-assisted invoice collections workflow built as one importable n8n canvas. It combines scheduled S3 ingestion, DynamoDB state, deterministic policy, Bedrock drafting, controlled Gmail notifications, approval handling, reporting, a conversational agent, and workflow-level failure operations.
 
-It is intentionally not a billing platform, accounting system, or autonomous debt-collection service.
+It is not an accounting ledger, payment processor, customer master, or autonomous debt-collection system.
 
-## Processing model
+## Processing boundaries
 
-```mermaid
-flowchart LR
-    A[Webhook] --> A2[Execution context]
-    A2 --> B[Validate and normalize]
-    B -->|Invalid| X[HTTP 400]
-    B -->|Valid| C[Classify stage]
-    C -->|Paid or current| Y[No action]
-    C -->|Eligible| D{Claude enabled?}
-    D -->|No| E[Safe template]
-    D -->|Yes| F[Claude draft]
-    F --> G[Validate or fallback]
-    E --> H[Approval package]
-    G --> H
-    H -->|Preview| I[Return draft]
-    H -->|Send| J{Exact approval?}
-    J -->|No| K[HTTP 409]
-    J -->|Yes| R{Recipient allowed?}
-    R -->|No| Z[HTTP 403]
-    R -->|Yes| L[Simulate and audit]
-```
+1. **S3 is the batch-ingestion boundary.** The scheduled workflow downloads a fictional daily aging feed and extracts CSV records.
+2. **DynamoDB is the state boundary.** Current invoice state, pending approvals, audit events, incidents, and compact agent session context use separate generic demonstration tables.
+3. **Deterministic code owns financial policy.** Date arithmetic, invoice status, dispute status, amount thresholds, and aging determine the next action.
+4. **Bedrock owns language generation only.** The model cannot select collection policy, authorize delivery, or create business facts.
+5. **The content guard owns the AI trust boundary.** Unsafe drafts are discarded and replaced with a deterministic template.
+6. **Gmail is the notification boundary.** Separate nodes make customer and internal notifications visible and independently configurable.
+7. **The approval API owns high-risk delivery.** The send path independently verifies pending state, the exact phrase, and the recipient policy.
+8. **S3 and DynamoDB retain evidence.** Delivery artifacts, run reports, state updates, and audit events are written after controlled actions.
+9. **The Error Trigger owns operational failures.** Error text is redacted before incident storage or notification.
 
-## Trust boundaries
+## Why native nodes are preferred
 
-1. **Untrusted request:** Every webhook field is treated as untrusted and length-bounded.
-2. **Deterministic policy:** Eligibility, stage, and tone are decided without an LLM.
-3. **Constrained generation:** Claude receives only approved invoice facts and must return two JSON strings.
-4. **Output validation:** Invalid AI output is discarded and replaced by a deterministic template.
-5. **Human authorization:** A send request requires an exact invoice-bound approval phrase.
-6. **Public safety mode:** The public workflow never sends external email.
-7. **Operational isolation:** Failed executions are routed to a separate redaction and incident-classification workflow.
+Native nodes expose system behavior on the canvas and make credential, retry, and execution boundaries visible. The workflow therefore uses AWS S3, AWS DynamoDB, Gmail, Extract From File, Loop Over Items, Edit Fields, Merge, If, Switch, Aggregate, Convert to File, Webhook, Respond to Webhook, and Error Trigger nodes directly.
 
-## Authorization boundary
+Four Code nodes remain for logic that is clearer and safer as a bounded function: collection policy, AI-content screening, portfolio filtering and aggregation, and error redaction.
 
-Preview and send are separate actions. Analysts can request drafts, while manager and finance-administrator roles can request an approved send. The role supplied by this public demo is untrusted input; production identity must be asserted by an authenticated upstream service and must never rely on a user-editable request body.
+## Agent model
 
-## Recipient boundary
+The conversational agent has three tools:
 
-The public workflow allows simulated send actions only for the configured fictional domain. This protects reviewers from accidentally directing the imported workflow toward a real person. Production delivery requires an authoritative contact source, suppression controls, consent rules, and provider reconciliation.
+- portfolio search and aggregation from the current S3 feed;
+- invoice state lookup;
+- reminder preview.
 
-## Idempotency
+The model chooses a relevant tool based on the meaning of the request rather than required keywords. Bounded chat memory and a compact DynamoDB session record may resolve follow-up references; neither can establish current financial facts. The S3 feed is authoritative for portfolio analysis, DynamoDB is authoritative for exact operational state, and the approval API remains authoritative for sending.
 
-The workflow emits an `idempotencyKey` derived from invoice ID, action, evaluation date, and actor ID. A production implementation should enforce uniqueness in a durable database before delivery. The public workflow exposes the key for demonstration but does not pretend that stateless n8n execution provides an atomic guarantee.
+The scheduled drafting agent is separate. It receives a single policy-approved invoice and produces language only.
 
-## AI boundary
+## Approval and idempotency
 
-The model drafts language only. It does not determine whether an invoice is overdue, choose a collection stage, approve delivery, calculate amounts, or invent payment instructions. A deterministic fallback keeps the workflow usable when the model is disabled, unavailable, or returns malformed output.
+The demonstration stores approval state with an execution ID and exact phrase. The approval API checks `PENDING` state before delivery and writes a `USED` record afterward.
 
-## Failure handling
+This demonstrates the control sequence but is not an atomic idempotency guarantee. Production implementation should use a DynamoDB conditional update or transactional write so only one concurrent request can change `PENDING` to `USED`.
 
-The supporting workflow starts with n8n's Error Trigger. It redacts common email and credential patterns before assigning severity or constructing an alert. Severity remains deterministic. Alert delivery is simulated so that importing the repository cannot disclose execution data to an external service.
+## Failure model
 
-## Data classification
+The canvas includes an n8n Error Trigger path that truncates the error, redacts token-like strings, writes a generic incident, and emails only a bounded summary. In a production n8n deployment, this lane must be configured as a separate error workflow or duplicated into one, because an Error Trigger does not catch failures from its own containing workflow.
 
-All samples are marked as fictional demonstration data. Runtime execution screenshots should be reviewed separately because n8n can display request headers, credential names, webhook URLs, and node outputs even when the exported workflow is sanitized.
+Retries are intentionally left to node-level n8n settings and infrastructure policy because the appropriate retry behavior differs by operation. For example, an S3 read can usually retry safely, while an email send requires provider reconciliation or idempotency before replay.
 
 ## Production hardening
 
 Before production use, add:
 
-- authenticated webhook ingress and tenant authorization;
-- a durable approval record with expiry and one-time consumption;
-- an atomic idempotency store;
-- an approved email provider and recipient allow-list;
-- centralized secrets management;
-- structured monitoring, alerting, retention, and redaction;
-- rate limits, replay protection, and payload-size limits at the gateway;
-- legal review of reminder policies and regional communications requirements.
+- authenticated ingress and tenant authorization;
+- least-privilege IAM roles scoped to specific tables, keys, models, and buckets;
+- Secrets Manager or n8n-managed credentials;
+- atomic approval consumption and delivery idempotency;
+- suppression lists, consent rules, and bounce processing;
+- encrypted storage, retention, backup, and deletion policies;
+- queue-based throttling for larger volumes;
+- CloudWatch metrics, alarms, traces, and provider reconciliation;
+- legal review of collection rules and customer communication;
+- integration tests against non-production AWS and email accounts.

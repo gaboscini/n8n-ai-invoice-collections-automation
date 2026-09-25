@@ -1,34 +1,47 @@
 # Demonstration Guide
 
-## Suggested five-minute walkthrough
+## Suggested seven-minute walkthrough
 
-### 1. Explain the control boundary
+### 1. Start with the canvas
 
-Start with the webhook and validation section. Explain that malformed requests stop before policy evaluation, AI, or delivery.
+Show the ten Sticky Note sections and explain that they separate chat, agent tools, batch intake, state, policy, AI drafting, notifications, reporting, approval, and failures.
 
-### 2. Show deterministic policy
+### 2. Show native integrations
 
-Open **Apply Collection Policy**. Highlight that days overdue, payment status, dispute status, amount threshold, and currency—not the LLM—determine eligibility, stage, tone, and risk.
+Point out the AWS S3, Extract From File, Loop Over Items, Edit Fields, DynamoDB, Merge, If, Switch, Gmail, Aggregate, and Convert to File nodes. Mention that only four Code nodes remain for policy, AI screening, portfolio filtering, and redaction.
 
-### 3. Compare drafting modes
+### 3. Run the fictional S3 feed
 
-Run `preview-request.json` with `useAi: false` to show the credential-free deterministic template. If a Claude credential is available, repeat with `useAi: true` and show that the response is parsed and validated.
+Use `samples/daily-invoice-aging.csv`. Show S3 download, CSV extraction, batching, invoice normalization, DynamoDB lookup, and merged state.
 
-### 4. Demonstrate approval
+### 4. Explain deterministic policy
 
-Show the preview response and its invoice-bound phrase. Submit an incorrect phrase first to demonstrate the HTTP 409 path, then use the exact phrase.
+Open **Calculate Aging and Collection Rule**. Demonstrate one ordinary reminder, one high-value escalation, one disputed invoice, and one paid invoice. Emphasize that Bedrock does not choose the collection action.
 
-### 5. Close with honest production boundaries
+### 5. Demonstrate AI drafting and fallback
 
-Explain that the public project simulates delivery deliberately. Point to the durable approval, atomic idempotency, authentication, and monitoring requirements in `ARCHITECTURE.md`.
+Run an eligible reminder through Bedrock. Show **Parse and Screen AI Draft**, then pin an unsafe draft containing a placeholder or bank details to demonstrate the safe-template branch.
 
-### 6. Show operational failure handling
+### 6. Show meaningful email nodes
 
-Open the separate execution-error workflow. Explain that redaction happens before deterministic severity classification and alert preparation.
+Show the separate nodes for customer reminder, approval request, approved reminder, payment confirmation, manual review, run summary, and failure alert. Keep all recipients fictional during the demonstration.
+
+### 7. Demonstrate approval
+
+Use a high-value invoice to create a pending approval. Submit an incorrect phrase to show HTTP 409, then use a matching fictional pending record and an `example.com` recipient to show the approved path.
+
+### 8. Close with evidence and operations
+
+Show DynamoDB state and audit writes, the S3 delivery evidence, the XLSX run report, and the redacted Error Trigger path.
+
+### 9. Optional chat demonstration
+
+Ask for a portfolio total, then filter to invoices more than 60 days overdue and follow up with “Which one has the largest amount?” Show that the agent preserves context but refreshes facts through **Portfolio Search**. Ask for an exact invoice to show **Invoice State Lookup**, then request a reminder preview and show that the tool never sends email.
 
 ## Recording safety
 
-- Use only the included fictional examples.
-- Hide credential panels and execution headers.
-- Do not activate the workflow on a public webhook.
-- Do not add a real recipient or email node before recording.
+- Use only the included fictional data.
+- Keep the workflow inactive except during controlled manual tests.
+- Hide credential panels, execution headers, and webhook URLs.
+- Do not replace `example.com` recipients in a public recording.
+- State that static validation passed but configured n8n runtime testing is environment-dependent.
