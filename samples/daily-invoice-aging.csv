@@ -1,0 +1,9 @@
+invoiceId,customerName,customerEmail,amountUsd,dueDate,status,disputeStatus,accountOwner
+DEMO-2026-1001,Northstar Office Supply,accounts@northstar.example.com,18500,2026-07-20,OPEN,NONE,Jordan Lee
+DEMO-2026-1002,Harborline Retail,finance@harborline.example.com,63800,2026-07-24,OPEN,NONE,Morgan Chen
+DEMO-2026-1003,BluePeak Manufacturing,ap@bluepeak.example.com,27400,2026-08-12,OPEN,NONE,Jordan Lee
+DEMO-2026-1004,Greenfield Foods,payments@greenfield.example.com,9200,2026-08-30,OPEN,NONE,Taylor Reyes
+DEMO-2026-1005,Cedar Works,ap@cedarworks.example.com,34600,2026-09-09,DISPUTED,DISPUTED,Morgan Chen
+DEMO-2026-1006,Northstar Office Supply,accounts@northstar.example.com,7800,2026-09-15,OPEN,NONE,Jordan Lee
+DEMO-2026-1007,Summit Industrial Services,billing@summit.example.com,41200,2026-09-28,OPEN,NONE,Taylor Reyes
+DEMO-2026-1008,Maple Ridge Distribution,finance@mapleridge.example.com,15600,2026-06-18,PAID,NONE,Morgan Chen

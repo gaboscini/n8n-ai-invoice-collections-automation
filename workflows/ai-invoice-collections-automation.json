@@ -1,0 +1,4311 @@
+{
+  "name": "AI Invoice Collections Automation - Integrated Agent",
+  "nodes": [
+    {
+      "id": "fbf44faa-9da0-4457-b60a-37c3425197f5",
+      "name": "Section - AI Operations Chat",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        31296,
+        10768
+      ],
+      "parameters": {
+        "width": 2900,
+        "height": 618,
+        "color": 5,
+        "content": "## AI Operations Chat\nCombines bounded chat memory with a durable session summary for reliable follow-ups. Current financial facts still come from governed tools, never from conversation history."
+      }
+    },
+    {
+      "id": "580e1277-7628-4e9c-acac-b7d253a71cc3",
+      "name": "Section - Governed Agent Tools",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        31296,
+        11408
+      ],
+      "parameters": {
+        "width": 1716,
+        "height": 846,
+        "color": 3,
+        "content": "## Governed Agent Tools\nProvides portfolio search, exact state lookup, and controlled reminder previews. Read-only analysis is grounded in the current S3 feed, while actions remain approval-controlled."
+      }
+    },
+    {
+      "id": "8a440e43-d1d7-4360-aab3-9add4d909fc9",
+      "name": "Section - Scheduled S3 Intake",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        31296,
+        12272
+      ],
+      "parameters": {
+        "width": 980,
+        "height": 692,
+        "color": 5,
+        "content": "## Scheduled S3 Intake\nLoads the daily invoice aging feed from S3, extracts the CSV records, and processes invoices in bounded batches."
+      }
+    },
+    {
+      "id": "b03ac664-fcdf-4903-ac2c-0c17bafdfae5",
+      "name": "Section - Invoice State Enrichment",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32304,
+        12272
+      ],
+      "parameters": {
+        "width": 1000,
+        "height": 700,
+        "color": 4,
+        "content": "## Invoice State Enrichment\nNormalizes invoice fields, retrieves collection state from DynamoDB, and combines both sources before policy evaluation."
+      }
+    },
+    {
+      "id": "bd6707d7-7878-41ba-bea6-6eadd4fc5b2f",
+      "name": "Section - Collection Decision Engine",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        33328,
+        12272
+      ],
+      "parameters": {
+        "width": 800,
+        "height": 700,
+        "color": 2,
+        "content": "## Collection Decision Engine\nCalculates aging and applies deterministic collection rules. Paid, disputed, reminder, escalation, and no-action outcomes are routed explicitly."
+      }
+    },
+    {
+      "id": "7765ba45-7a1c-4d50-b512-60c355342898",
+      "name": "Section - AI Drafting and Safety",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        34144,
+        12272
+      ],
+      "parameters": {
+        "width": 1100,
+        "height": 700,
+        "color": 6,
+        "content": "## AI Drafting & Safety\nUses Amazon Bedrock to draft grounded customer communication. A deterministic guard validates the output and replaces unsafe content with an approved template."
+      }
+    },
+    {
+      "id": "56013335-b4e5-4e66-90b3-01b70d57d9cd",
+      "name": "Section - Notifications and Evidence",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        35264,
+        12272
+      ],
+      "parameters": {
+        "width": 2000,
+        "height": 1156,
+        "color": 3,
+        "content": "## Notifications & Evidence\nSends only meaningful customer or internal notifications, records state and audit events in DynamoDB, and stores delivery evidence in S3. High-risk reminders require approval."
+      }
+    },
+    {
+      "id": "65335e8f-6e0e-4617-a3f2-3556e4d8b13f",
+      "name": "Section - Run Reporting",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        37280,
+        12272
+      ],
+      "parameters": {
+        "width": 1300,
+        "height": 500,
+        "color": 5,
+        "content": "## Run Reporting\nAggregates the completed batch, stores an XLSX run report in S3, and emails a concise operations summary."
+      }
+    },
+    {
+      "id": "b52ae4aa-8325-476d-adf4-1d3bd94db797",
+      "name": "Section - Approval API",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        33040,
+        11408
+      ],
+      "parameters": {
+        "width": 2740,
+        "height": 842,
+        "color": 4,
+        "content": "## Approval API\nValidates one-time approval phrases and recipient policy before sending a queued reminder. Every accepted or rejected request returns a controlled webhook response."
+      }
+    },
+    {
+      "id": "addb3e15-d778-4879-9f8f-96116edc219a",
+      "name": "Section - Error Handling",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        34224,
+        10768
+      ],
+      "parameters": {
+        "width": 1544,
+        "height": 614,
+        "color": 2,
+        "content": "## Error Handling\nRedacts workflow failures, writes a structured incident record to DynamoDB, and alerts operations without exposing credentials or payload contents."
+      }
+    },
+    {
+      "id": "30543e1d-0c91-4988-919d-74d8af97d755",
+      "name": "When Chat Message Received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        31376,
+        10976
+      ],
+      "parameters": {
+        "options": {
+          "responseMode": "lastNode"
+        }
+      }
+    },
+    {
+      "id": "57906fc3-a981-46d8-856c-ba8e58372dd2",
+      "name": "Normalize Chat Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        31664,
+        10976
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "normalize-chat-field-1",
+              "name": "chatInput",
+              "value": "={{ String($json.chatInput || '').trim().slice(0, 2000) }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-chat-field-2",
+              "name": "sessionId",
+              "value": "={{ String($json.sessionId || $execution.id) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ca9ac9e6-7f33-469a-869c-186ec171cde9",
+      "name": "Load Saved Conversation Context",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        31936,
+        10976
+      ],
+      "parameters": {
+        "operation": "get",
+        "tableName": "invoice_collections_agent_sessions_demo",
+        "keysUi": {
+          "keyValues": [
+            {
+              "key": "sessionId",
+              "value": "={{ $('Normalize Chat Request').item.json.sessionId }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "9971841a-b955-46eb-9ffc-649f60324243",
+      "name": "Merge Current and Saved Context",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        32224,
+        10976
+      ],
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      }
+    },
+    {
+      "id": "1d441ed1-6ce2-4744-9b67-2ba231546bd3",
+      "name": "Build Grounded Agent Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32496,
+        10976
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "build-agent-prompt-field-1",
+              "name": "chatInput",
+              "value": "={{ $('Normalize Chat Request').item.json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "build-agent-prompt-field-2",
+              "name": "sessionId",
+              "value": "={{ $('Normalize Chat Request').item.json.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "build-agent-prompt-field-3",
+              "name": "savedContext",
+              "value": "={{ $json.lastAssistantResponse ? ('Previous user request: ' + String($json.lastUserMessage || '').slice(0, 1000) + '\\nPrevious assistant response: ' + String($json.lastAssistantResponse || '').slice(0, 2000)) : 'No durable context is available for this session.' }}",
+              "type": "string"
+            },
+            {
+              "id": "build-agent-prompt-field-4",
+              "name": "agentPrompt",
+              "value": "={{ 'CURRENT USER REQUEST:\\n' + $('Normalize Chat Request').item.json.chatInput + '\\n\\nDURABLE SESSION REFERENCE (not authoritative financial data):\\n' + ($json.lastAssistantResponse ? ('Previous user request: ' + String($json.lastUserMessage || '').slice(0, 1000) + '\\nPrevious assistant response: ' + String($json.lastAssistantResponse || '').slice(0, 2000)) : 'No prior durable context.') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5b840c37-9cfc-4b9e-a09c-6e201f27267f",
+      "name": "Invoice Collections Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        32784,
+        10976
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.agentPrompt }}",
+        "options": {
+          "systemMessage": "You are an enterprise B2B invoice-collections operations assistant for a fictional portfolio demonstration.\n\nUNDERSTAND THE REQUEST\n- Interpret the user's full meaning, not isolated keywords or fixed phrases.\n- Resolve follow-ups such as \"that invoice\", \"the largest one\", \"those overdue accounts\", and \"prepare it\" from the conversation and durable session reference.\n- If more than one interpretation would materially change the result, ask one concise clarification question. Otherwise proceed with the most reasonable AR interpretation.\n- Answer only Accounts Receivable, invoice, customer-balance, collection, payment-status, aging, reporting, and reminder questions. Decline unrelated requests briefly.\n\nGROUNDING AND TOOL CHOICE\n- Use Portfolio Search for totals, lists, comparisons, customer or owner searches, status filters, aging filters, and portfolio summaries.\n- Use Invoice State Lookup for the current operational state of one exact invoice.\n- Use Reminder Preview only when the user wants an official reminder preview for one exact invoice.\n- Tool results are authoritative for current facts. Conversation memory and durable context may resolve references, but they are never evidence for amounts, dates, status, recipients, eligibility, or action completion.\n- If a tool returns no result, say that clearly. Never fill gaps from assumptions.\n- Distinguish invoice count from distinct customer count. Treat PAID invoices as not outstanding. Do not recommend collection action for DISPUTED invoices.\n\nSAFETY AND ACTIONS\n- Never invent or alter invoice IDs, customer names, amounts, dates, recipients, payment status, bank details, fees, penalties, legal claims, approval phrases, or execution results.\n- Read-only retrieval and analysis may proceed automatically.\n- A reminder preview does not send email. Actual delivery is handled only by the separate approval API after independent validation; you cannot send email and must never claim that you did.\n- If asked to send, explain the approval requirement and offer or prepare the governed preview when an exact eligible invoice is known.\n\nRESPONSE QUALITY\n- Lead with the direct answer, then the minimum supporting detail.\n- Use concise business language. Use Markdown tables for multi-record results.\n- Label recommendations as recommendations and separate them from confirmed tool facts."
+        }
+      }
+    },
+    {
+      "id": "10105826-8a77-43a9-8ca5-a2a6bfffc266",
+      "name": "Format Agent Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        33056,
+        10976
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "format-chat-field-1",
+              "name": "response",
+              "value": "={{ $json.output || $json.text || 'No response was generated.' }}",
+              "type": "string"
+            },
+            {
+              "id": "format-chat-field-2",
+              "name": "sessionId",
+              "value": "={{ $('Normalize Chat Request').item.json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "36e21e04-d7aa-4522-8840-f9acb32f3ea0",
+      "name": "Save Conversation Context",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        33344,
+        10976
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_agent_sessions_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "sessionId",
+              "fieldValue": "={{ $('Normalize Chat Request').item.json.sessionId }}"
+            },
+            {
+              "fieldId": "lastUserMessage",
+              "fieldValue": "={{ $('Normalize Chat Request').item.json.chatInput }}"
+            },
+            {
+              "fieldId": "lastAssistantResponse",
+              "fieldValue": "={{ String($json.response || '').slice(0, 4000) }}"
+            },
+            {
+              "fieldId": "updatedAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "0a34beae-b2fc-400a-9d6a-f8a01ad9f18f",
+      "name": "Return Agent Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        33616,
+        10976
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "return-chat-response-field-1",
+              "name": "response",
+              "value": "={{ $('Format Agent Response').item.json.response }}",
+              "type": "string"
+            },
+            {
+              "id": "return-chat-response-field-2",
+              "name": "sessionId",
+              "value": "={{ $('Normalize Chat Request').item.json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "262b66b1-52a0-4cd1-a51e-c7b55618bffd",
+      "name": "Agent Bedrock Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAwsBedrock",
+      "typeVersion": 1.1,
+      "position": [
+        32784,
+        11232
+      ],
+      "parameters": {
+        "modelSource": "inferenceProfile",
+        "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "options": {
+          "temperature": 0.2
+        }
+      }
+    },
+    {
+      "id": "38c05286-f495-4bc9-9202-f859ccb06be2",
+      "name": "Bounded Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        33056,
+        11232
+      ],
+      "parameters": {
+        "sessionKey": "={{ $('Normalize Chat Request').item.json.sessionId }}",
+        "contextWindowLength": 12
+      }
+    },
+    {
+      "id": "4aba5302-5239-4a74-a26f-2aaac85d4f00",
+      "name": "Portfolio Search",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        33344,
+        11232
+      ],
+      "parameters": {
+        "description": "Search and summarize the current invoice portfolio. Use for totals, lists, aging filters, customer or owner searches, comparisons, and follow-up references to sets of invoices.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_THIS_WORKFLOW_ID",
+          "mode": "id",
+          "cachedResultName": "AI Invoice Collections Automation - Integrated Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "operation": "search_portfolio",
+            "invoice_id": "={{ $fromAI('invoice_id', 'Optional exact or partial invoice ID', 'string', '') }}",
+            "customer": "={{ $fromAI('customer', 'Optional customer name search', 'string', '') }}",
+            "status": "={{ $fromAI('status', 'Optional invoice status such as OPEN, OVERDUE, PAID, or DISPUTED', 'string', '') }}",
+            "collection_action": "={{ $fromAI('collection_action', 'Optional collection action filter', 'string', '') }}",
+            "min_days_overdue": "={{ $fromAI('min_days_overdue', 'Optional minimum days overdue', 'number', -99999) }}",
+            "max_days_overdue": "={{ $fromAI('max_days_overdue', 'Optional maximum days overdue', 'number', 99999) }}",
+            "account_owner": "={{ $fromAI('account_owner', 'Optional account owner name search', 'string', '') }}",
+            "limit": "={{ $fromAI('limit', 'Maximum records to return from 1 to 50', 'number', 20) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "operation",
+              "displayName": "operation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "invoice_id",
+              "displayName": "invoice_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customer",
+              "displayName": "customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "collection_action",
+              "displayName": "collection_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "min_days_overdue",
+              "displayName": "min_days_overdue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "max_days_overdue",
+              "displayName": "max_days_overdue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "account_owner",
+              "displayName": "account_owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
+    },
+    {
+      "id": "24344c06-5309-42b6-ab0e-6641db4a3c44",
+      "name": "Invoice State Lookup",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        33616,
+        11232
+      ],
+      "parameters": {
+        "description": "Retrieve the current state for one exact invoice ID from the portfolio state store.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_THIS_WORKFLOW_ID",
+          "mode": "id",
+          "cachedResultName": "AI Invoice Collections Automation - Integrated Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "operation": "lookup_invoice",
+            "invoice_id": "={{ $fromAI('invoice_id', 'Exact invoice ID', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "operation",
+              "displayName": "operation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "invoice_id",
+              "displayName": "invoice_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
+    },
+    {
+      "id": "fbe261fe-171b-4e82-83db-87aea8912a4c",
+      "name": "Reminder Preview",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        33904,
+        11232
+      ],
+      "parameters": {
+        "description": "Prepare a controlled preview for one exact invoice ID. This tool never sends email.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_THIS_WORKFLOW_ID",
+          "mode": "id",
+          "cachedResultName": "AI Invoice Collections Automation - Integrated Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "operation": "preview_reminder",
+            "invoice_id": "={{ $fromAI('invoice_id', 'Exact invoice ID', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "operation",
+              "displayName": "operation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "invoice_id",
+              "displayName": "invoice_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
+    },
+    {
+      "id": "7f05be94-005c-4b34-80fe-f31c6c4744c5",
+      "name": "When Called as Agent Tool",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        31376,
+        11584
+      ],
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "operation"
+            },
+            {
+              "name": "invoice_id"
+            },
+            {
+              "name": "customer"
+            },
+            {
+              "name": "status"
+            },
+            {
+              "name": "collection_action"
+            },
+            {
+              "name": "min_days_overdue",
+              "type": "number"
+            },
+            {
+              "name": "max_days_overdue",
+              "type": "number"
+            },
+            {
+              "name": "account_owner"
+            },
+            {
+              "name": "limit",
+              "type": "number"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "787d0ff3-faea-4063-bad0-5f59fbbc7e00",
+      "name": "Route Agent Tool Operation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        31664,
+        11584
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "tool-router-rule-1",
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "search_portfolio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Portfolio search"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "tool-router-rule-2",
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "lookup_invoice",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Invoice lookup"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "tool-router-rule-3",
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "preview_reminder",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reminder preview"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Unsupported operation"
+        }
+      }
+    },
+    {
+      "id": "046e065a-5107-428e-a4a1-3c1bd4b57899",
+      "name": "Download Agent Portfolio Feed",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        31936,
+        11504
+      ],
+      "parameters": {
+        "bucketName": "invoice-collections-portfolio-demo",
+        "fileKey": "incoming/daily-invoice-aging.csv",
+        "binaryPropertyName": "=data"
+      }
+    },
+    {
+      "id": "3a0f7cdb-6d2b-4ef9-96bd-f6b626ddcdc6",
+      "name": "Extract Agent Portfolio CSV",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        32224,
+        11504
+      ],
+      "parameters": {
+        "binaryPropertyName": "=data",
+        "options": {}
+      }
+    },
+    {
+      "id": "c636392d-c7ff-4298-a63e-db8d5376e007",
+      "name": "Filter and Summarize Portfolio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32496,
+        11504
+      ],
+      "parameters": {
+        "jsCode": "const request = $('When Called as Agent Tool').item.json;\nconst text = value => String(value ?? '').trim();\nconst upper = value => text(value).toUpperCase();\nconst numberOr = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;\nconst minDays = numberOr(request.min_days_overdue, -99999);\nconst maxDays = numberOr(request.max_days_overdue, 99999);\nconst limit = Math.max(1, Math.min(50, Math.trunc(numberOr(request.limit, 20))));\nconst today = new Date();\nconst todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());\nconst rows = $input.all().map(item => {\n  const row = item.json;\n  const dueDate = text(row.dueDate || row['Due Date']);\n  const due = new Date(dueDate + 'T00:00:00Z');\n  const daysOverdue = Number.isFinite(due.getTime()) ? Math.floor((todayUtc - due.getTime()) / 86400000) : null;\n  const status = upper(row.status || row.Status || 'OPEN');\n  const amountUsd = numberOr(row.amountUsd || row['Amount USD'], 0);\n  const disputeStatus = upper(row.disputeStatus || row.Dispute || 'NONE');\n  let collectionAction = 'NO_ACTION';\n  if (status === 'PAID') collectionAction = 'PAYMENT_CONFIRMATION';\n  else if (disputeStatus !== 'NONE' || status === 'DISPUTED') collectionAction = 'MANUAL_REVIEW';\n  else if (['OPEN', 'OVERDUE'].includes(status) && daysOverdue !== null && (daysOverdue >= 60 || amountUsd >= 25000)) collectionAction = 'INTERNAL_ESCALATION';\n  else if (['OPEN', 'OVERDUE'].includes(status) && daysOverdue !== null && daysOverdue >= -7) collectionAction = 'CUSTOMER_REMINDER';\n  return {\n    invoiceId: upper(row.invoiceId || row['Invoice ID']),\n    customerName: text(row.customerName || row.Customer),\n    amountUsd,\n    dueDate,\n    daysOverdue,\n    status,\n    disputeStatus,\n    accountOwner: text(row.accountOwner || row.Owner),\n    collectionAction\n  };\n}).filter(row => row.invoiceId);\nconst invoiceFilter = upper(request.invoice_id);\nconst customerFilter = upper(request.customer);\nconst statusFilter = upper(request.status);\nconst actionFilter = upper(request.collection_action);\nconst ownerFilter = upper(request.account_owner);\nconst matches = rows.filter(row =>\n  (!invoiceFilter || row.invoiceId.includes(invoiceFilter)) &&\n  (!customerFilter || upper(row.customerName).includes(customerFilter)) &&\n  (!statusFilter || row.status === statusFilter) &&\n  (!actionFilter || row.collectionAction === actionFilter) &&\n  (!ownerFilter || upper(row.accountOwner).includes(ownerFilter)) &&\n  (row.daysOverdue === null || (row.daysOverdue >= minDays && row.daysOverdue <= maxDays))\n);\nconst outstanding = matches.filter(row => row.status !== 'PAID');\nreturn [{ json: {\n  ok: true,\n  totalMatchingInvoices: matches.length,\n  distinctCustomerCount: new Set(matches.map(row => upper(row.customerName))).size,\n  totalAmountUsd: matches.reduce((sum, row) => sum + row.amountUsd, 0),\n  totalOutstandingUsd: outstanding.reduce((sum, row) => sum + row.amountUsd, 0),\n  returnedCount: Math.min(matches.length, limit),\n  hasMore: matches.length > limit,\n  appliedFilters: { invoiceId: invoiceFilter, customer: text(request.customer), status: statusFilter, collectionAction: actionFilter, minDaysOverdue: minDays, maxDaysOverdue: maxDays, accountOwner: text(request.account_owner) },\n  records: matches.slice(0, limit)\n} }];"
+      }
+    },
+    {
+      "id": "9628af85-6c6d-46c7-875c-fa029646ebf6",
+      "name": "Return Portfolio Search Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32784,
+        11504
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "tool-return-portfolio-field-1",
+              "name": "ok",
+              "value": "={{ $json.ok }}",
+              "type": "boolean"
+            },
+            {
+              "id": "tool-return-portfolio-field-2",
+              "name": "totalMatchingInvoices",
+              "value": "={{ $json.totalMatchingInvoices }}",
+              "type": "number"
+            },
+            {
+              "id": "tool-return-portfolio-field-3",
+              "name": "distinctCustomerCount",
+              "value": "={{ $json.distinctCustomerCount }}",
+              "type": "number"
+            },
+            {
+              "id": "tool-return-portfolio-field-4",
+              "name": "totalAmountUsd",
+              "value": "={{ $json.totalAmountUsd }}",
+              "type": "number"
+            },
+            {
+              "id": "tool-return-portfolio-field-5",
+              "name": "totalOutstandingUsd",
+              "value": "={{ $json.totalOutstandingUsd }}",
+              "type": "number"
+            },
+            {
+              "id": "tool-return-portfolio-field-6",
+              "name": "returnedCount",
+              "value": "={{ $json.returnedCount }}",
+              "type": "number"
+            },
+            {
+              "id": "tool-return-portfolio-field-7",
+              "name": "hasMore",
+              "value": "={{ $json.hasMore }}",
+              "type": "boolean"
+            },
+            {
+              "id": "tool-return-portfolio-field-8",
+              "name": "appliedFilters",
+              "value": "={{ $json.appliedFilters }}",
+              "type": "object"
+            },
+            {
+              "id": "tool-return-portfolio-field-9",
+              "name": "records",
+              "value": "={{ $json.records }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "467cdf01-a61f-4fcc-b2c9-c0f15b86d011",
+      "name": "Get Invoice State for Agent",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        31936,
+        11728
+      ],
+      "parameters": {
+        "operation": "get",
+        "tableName": "invoice_collections_state_demo",
+        "keysUi": {
+          "keyValues": [
+            {
+              "key": "invoiceId",
+              "value": "={{ String($json.invoice_id || '').trim().toUpperCase() }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "0c477f3b-6816-4f3f-a157-3cb50fa33e73",
+      "name": "Format Invoice State Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32224,
+        11728
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "tool-format-state-field-1",
+              "name": "ok",
+              "value": "={{ Boolean($json.invoiceId) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "tool-format-state-field-2",
+              "name": "invoiceId",
+              "value": "={{ $json.invoiceId || $('When Called as Agent Tool').item.json.invoice_id }}",
+              "type": "string"
+            },
+            {
+              "id": "tool-format-state-field-3",
+              "name": "customerName",
+              "value": "={{ $json.customerName || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "tool-format-state-field-4",
+              "name": "amountUsd",
+              "value": "={{ Number($json.amountUsd || 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "tool-format-state-field-5",
+              "name": "dueDate",
+              "value": "={{ $json.dueDate || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "tool-format-state-field-6",
+              "name": "status",
+              "value": "={{ $json.status || 'NOT_FOUND' }}",
+              "type": "string"
+            },
+            {
+              "id": "tool-format-state-field-7",
+              "name": "collectionAction",
+              "value": "={{ $json.collectionAction || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0494bfa7-4ab4-4e7f-8d7b-dc21a3bb67f0",
+      "name": "Get Reminder State for Agent",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        31936,
+        11936
+      ],
+      "parameters": {
+        "operation": "get",
+        "tableName": "invoice_collections_state_demo",
+        "keysUi": {
+          "keyValues": [
+            {
+              "key": "invoiceId",
+              "value": "={{ String($json.invoice_id || '').trim().toUpperCase() }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "e45c5af5-733a-4714-aff2-084f38799de7",
+      "name": "Reminder Preview Eligible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        32224,
+        11936
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tool-preview-eligible-condition",
+              "leftValue": "={{ ['OPEN','OVERDUE'].includes(String($json.status || '').toUpperCase()) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ca23db58-1b40-4171-9d04-b74646ace9e5",
+      "name": "Build Agent Reminder Preview",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32496,
+        11888
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "tool-build-preview-field-1",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "tool-build-preview-field-2",
+              "name": "status",
+              "value": "preview_ready",
+              "type": "string"
+            },
+            {
+              "id": "tool-build-preview-field-3",
+              "name": "invoiceId",
+              "value": "={{ $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "tool-build-preview-field-4",
+              "name": "subject",
+              "value": "={{ 'Payment reminder - invoice ' + $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "tool-build-preview-field-5",
+              "name": "message",
+              "value": "={{ 'A controlled reminder preview is available for ' + ($json.customerName || 'the customer') + '. Use the approval API to authorize delivery.' }}",
+              "type": "string"
+            },
+            {
+              "id": "tool-build-preview-field-6",
+              "name": "sent",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "eb213a96-2b09-43e9-a632-f4b9dfc90538",
+      "name": "Return Ineligible Preview Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32496,
+        12064
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "tool-preview-blocked-field-1",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "tool-preview-blocked-field-2",
+              "name": "status",
+              "value": "not_eligible",
+              "type": "string"
+            },
+            {
+              "id": "tool-preview-blocked-field-3",
+              "name": "message",
+              "value": "This invoice is not eligible for a reminder preview.",
+              "type": "string"
+            },
+            {
+              "id": "tool-preview-blocked-field-4",
+              "name": "sent",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "aaba8680-49b8-40e5-8e1d-e8a6bc446c0d",
+      "name": "Return Unsupported Tool Operation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32784,
+        12064
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "tool-unsupported-field-1",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "tool-unsupported-field-2",
+              "name": "status",
+              "value": "unsupported_tool_operation",
+              "type": "string"
+            },
+            {
+              "id": "tool-unsupported-field-3",
+              "name": "message",
+              "value": "The requested internal tool operation is not supported.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "2360c66b-d0c2-40e9-988b-bac76131d271",
+      "name": "Daily Collections Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        31376,
+        12448
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "59fbbea0-c1bc-43cc-ba2c-c08b020b9ad8",
+      "name": "Download Invoice Aging Feed",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        31616,
+        12448
+      ],
+      "parameters": {
+        "bucketName": "invoice-collections-portfolio-demo",
+        "fileKey": "incoming/daily-invoice-aging.csv",
+        "binaryPropertyName": "=data"
+      }
+    },
+    {
+      "id": "94aa30c3-1bd4-4923-b6df-494d01d2a70b",
+      "name": "Extract Invoice CSV",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        31856,
+        12448
+      ],
+      "parameters": {
+        "binaryPropertyName": "=data",
+        "options": {}
+      }
+    },
+    {
+      "id": "46d6dc6b-8b32-414d-a919-81ae83364017",
+      "name": "Loop Over Invoices",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        32096,
+        12448
+      ],
+      "parameters": {
+        "batchSize": 25,
+        "options": {}
+      }
+    },
+    {
+      "id": "af4db09b-482c-4bb5-bbd6-07137b58e82b",
+      "name": "Normalize Invoice Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32384,
+        12448
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "normalize-invoice-field-1",
+              "name": "invoiceId",
+              "value": "={{ String($json.invoiceId || $json['Invoice ID'] || '').trim().toUpperCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-invoice-field-2",
+              "name": "customerName",
+              "value": "={{ String($json.customerName || $json.Customer || '').trim().slice(0, 160) }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-invoice-field-3",
+              "name": "customerEmail",
+              "value": "={{ String($json.customerEmail || $json.Email || '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-invoice-field-4",
+              "name": "amountUsd",
+              "value": "={{ Number($json.amountUsd || $json['Amount USD'] || 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "normalize-invoice-field-5",
+              "name": "dueDate",
+              "value": "={{ String($json.dueDate || $json['Due Date'] || '').slice(0, 10) }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-invoice-field-6",
+              "name": "status",
+              "value": "={{ String($json.status || $json.Status || 'OPEN').trim().toUpperCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-invoice-field-7",
+              "name": "disputeStatus",
+              "value": "={{ String($json.disputeStatus || $json.Dispute || 'NONE').trim().toUpperCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-invoice-field-8",
+              "name": "accountOwner",
+              "value": "={{ String($json.accountOwner || $json.Owner || '').trim().slice(0, 120) }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-invoice-field-9",
+              "name": "source",
+              "value": "daily_s3_feed",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0a51940c-d099-4fb2-b297-fdfe99666fb9",
+      "name": "Invoice Record Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        32624,
+        12448
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "invoice-valid-condition",
+              "leftValue": "={{ Boolean($json.invoiceId && $json.customerName && $json.dueDate && Number.isFinite($json.amountUsd) && $json.amountUsd >= 0) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c1a366d2-99c6-4317-82a7-715704d7c0c6",
+      "name": "Get Existing Collection State",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        32864,
+        12448
+      ],
+      "parameters": {
+        "operation": "get",
+        "tableName": "invoice_collections_state_demo",
+        "keysUi": {
+          "keyValues": [
+            {
+              "key": "invoiceId",
+              "value": "={{ $('Normalize Invoice Record').item.json.invoiceId }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "7ee73a41-e5a1-444b-bc5e-89bcaae70fa3",
+      "name": "Merge Invoice and State",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        33104,
+        12448
+      ],
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      }
+    },
+    {
+      "id": "56a8a189-8405-4610-bf61-69e6e60b3eab",
+      "name": "Build Data Quality Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        32624,
+        12688
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "invalid-invoice-field-1",
+              "name": "invoiceId",
+              "value": "={{ $json.invoiceId || 'MISSING' }}",
+              "type": "string"
+            },
+            {
+              "id": "invalid-invoice-field-2",
+              "name": "customerName",
+              "value": "={{ $json.customerName || 'MISSING' }}",
+              "type": "string"
+            },
+            {
+              "id": "invalid-invoice-field-3",
+              "name": "eventType",
+              "value": "DATA_QUALITY_REVIEW",
+              "type": "string"
+            },
+            {
+              "id": "invalid-invoice-field-4",
+              "name": "eventAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "invalid-invoice-field-5",
+              "name": "subject",
+              "value": "={{ 'Invoice feed validation failed - ' + ($json.invoiceId || 'missing invoice ID') }}",
+              "type": "string"
+            },
+            {
+              "id": "invalid-invoice-field-6",
+              "name": "emailBody",
+              "value": "={{ '<p>An invoice record failed validation and was not processed.</p><p><strong>Invoice:</strong> ' + ($json.invoiceId || 'missing') + '</p><p><strong>Customer:</strong> ' + ($json.customerName || 'missing') + '</p>' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "4143dbda-13d5-488a-8b38-f2c4f18a2e17",
+      "name": "Send Data Quality Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        32864,
+        12688
+      ],
+      "parameters": {
+        "sendTo": "collections-ops@example.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "134f31a5-0444-462e-aa08-38e5e1f2105d",
+      "name": "Write Data Quality Audit",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        33104,
+        12688
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_audit_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Build Data Quality Alert').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "eventAt",
+              "fieldValue": "={{ $('Build Data Quality Alert').item.json.eventAt }}"
+            },
+            {
+              "fieldId": "eventType",
+              "fieldValue": "DATA_QUALITY_REVIEW"
+            },
+            {
+              "fieldId": "details",
+              "fieldValue": "Invoice record failed required-field validation"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "0d40acae-e1db-448e-8fab-0d045fa96719",
+      "name": "Calculate Aging and Collection Rule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        33360,
+        12448
+      ],
+      "parameters": {
+        "jsCode": "const invoice = $json;\nconst due = new Date(String(invoice.dueDate || '') + 'T00:00:00Z');\nconst now = new Date();\nconst validDueDate = Number.isFinite(due.getTime());\nconst daysOverdue = validDueDate ? Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - due.getTime()) / 86400000) : null;\nconst status = String(invoice.status || 'OPEN').toUpperCase();\nconst dispute = String(invoice.disputeStatus || 'NONE').toUpperCase();\nlet collectionAction = 'no_action';\nif (status === 'PAID' && invoice.paymentConfirmationSent !== true) collectionAction = 'payment_confirmation';\nelse if (dispute !== 'NONE' || status === 'DISPUTED') collectionAction = 'manual_review';\nelse if (['OPEN', 'OVERDUE'].includes(status) && daysOverdue !== null && (daysOverdue >= 60 || Number(invoice.amountUsd || 0) >= 25000)) collectionAction = 'internal_escalation';\nelse if (['OPEN', 'OVERDUE'].includes(status) && daysOverdue !== null && daysOverdue >= -7) collectionAction = 'customer_reminder';\nconst actionRequired = collectionAction !== 'no_action';\nconst requiresApproval = collectionAction === 'internal_escalation' || Number(invoice.amountUsd || 0) >= 25000;\nreturn { json: { ...invoice, daysOverdue, collectionAction, actionRequired, requiresApproval, policyEvaluatedAt: new Date().toISOString() } };"
+      }
+    },
+    {
+      "id": "378c64d4-fd7d-42ad-a1fe-eeeb6ae1c116",
+      "name": "Collection Action Required?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        33616,
+        12448
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "action-required-condition",
+              "leftValue": "={{ $json.actionRequired }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a42eed3b-c77d-4572-b058-faea85513b74",
+      "name": "Build No Action Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        33616,
+        12688
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "no-action-field-1",
+              "name": "invoiceId",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "no-action-field-2",
+              "name": "eventType",
+              "value": "NO_ACTION",
+              "type": "string"
+            },
+            {
+              "id": "no-action-field-3",
+              "name": "reason",
+              "value": "={{ 'No collection action required for status ' + $('Calculate Aging and Collection Rule').item.json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "no-action-field-4",
+              "name": "eventAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "45e69405-19bf-417a-802e-8ac5d0a580cb",
+      "name": "Write No Action Audit",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        33888,
+        12688
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_audit_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $json.invoiceId }}"
+            },
+            {
+              "fieldId": "eventAt",
+              "fieldValue": "={{ $json.eventAt }}"
+            },
+            {
+              "fieldId": "eventType",
+              "fieldValue": "={{ $json.eventType }}"
+            },
+            {
+              "fieldId": "details",
+              "fieldValue": "={{ $json.reason }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "d94609f4-1f97-4fec-936a-f6631225cd10",
+      "name": "Route Collection Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        33888,
+        12448
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "action-router-rule-1",
+                    "leftValue": "={{ $json.collectionAction }}",
+                    "rightValue": "customer_reminder",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Customer reminder"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "action-router-rule-2",
+                    "leftValue": "={{ $json.collectionAction }}",
+                    "rightValue": "internal_escalation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Escalation draft"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "action-router-rule-3",
+                    "leftValue": "={{ $json.collectionAction }}",
+                    "rightValue": "payment_confirmation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Payment confirmation"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Manual review"
+        }
+      }
+    },
+    {
+      "id": "714eac78-b2f7-449f-a08a-4631e095ef0d",
+      "name": "Bedrock Reminder Drafting Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        34224,
+        12448
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ `Draft a concise B2B payment reminder using only these fields: invoice ${$json.invoiceId}, customer ${$json.customerName}, amount USD ${$json.amountUsd}, due date ${$json.dueDate}, days overdue ${$json.daysOverdue}, action ${$json.collectionAction}. Return a subject line followed by the email body. Do not add payment instructions, penalties, legal claims, or facts not provided.` }}",
+        "options": {
+          "systemMessage": "You draft factual, professional invoice-collection emails from supplied fields only. Never invent bank details, legal consequences, fees, dates, amounts, contacts, or promises. Do not use placeholders."
+        }
+      }
+    },
+    {
+      "id": "62dbf352-3609-4052-b2d5-9ae66cae8602",
+      "name": "Drafting Bedrock Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAwsBedrock",
+      "typeVersion": 1.1,
+      "position": [
+        34224,
+        12688
+      ],
+      "parameters": {
+        "modelSource": "inferenceProfile",
+        "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "options": {
+          "temperature": 0.1
+        }
+      }
+    },
+    {
+      "id": "c8e7624c-b57c-4907-8eb9-27d68a59bf45",
+      "name": "Parse and Screen AI Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        34480,
+        12448
+      ],
+      "parameters": {
+        "jsCode": "const source = $('Calculate Aging and Collection Rule').item.json;\nconst text = String($json.output || '').trim();\nconst lines = text.split(/\\r?\\n/).filter(Boolean);\nconst rawSubject = (lines.shift() || '').replace(/^subject\\s*:\\s*/i, '').trim();\nconst body = lines.join('\\n').trim();\nconst forbidden = /(bank account|routing number|swift|iban|late fee|penalty|legal action|\\[[^\\]]+\\])/i;\nconst draftSafe = rawSubject.length >= 8 && rawSubject.length <= 160 && body.length >= 40 && body.length <= 5000 && !forbidden.test(text);\nreturn { json: { ...source, generatedSubject: rawSubject, generatedBody: body, draftSafe, draftSource: 'amazon_bedrock' } };"
+      }
+    },
+    {
+      "id": "1ef7d956-7fc3-4b5d-896a-38243550bc01",
+      "name": "AI Draft Safe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        34736,
+        12448
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "draft-safe-condition",
+              "leftValue": "={{ $json.draftSafe }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "027139b1-7157-43ad-afbe-47f498ba2aa6",
+      "name": "Apply Safe Reminder Template",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        34736,
+        12688
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "safe-template-field-1",
+              "name": "invoiceId",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "safe-template-field-2",
+              "name": "customerName",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.customerName }}",
+              "type": "string"
+            },
+            {
+              "id": "safe-template-field-3",
+              "name": "customerEmail",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.customerEmail }}",
+              "type": "string"
+            },
+            {
+              "id": "safe-template-field-4",
+              "name": "amountUsd",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.amountUsd }}",
+              "type": "number"
+            },
+            {
+              "id": "safe-template-field-5",
+              "name": "dueDate",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.dueDate }}",
+              "type": "string"
+            },
+            {
+              "id": "safe-template-field-6",
+              "name": "daysOverdue",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.daysOverdue }}",
+              "type": "number"
+            },
+            {
+              "id": "safe-template-field-7",
+              "name": "collectionAction",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.collectionAction }}",
+              "type": "string"
+            },
+            {
+              "id": "safe-template-field-8",
+              "name": "requiresApproval",
+              "value": "={{ $('Calculate Aging and Collection Rule').item.json.requiresApproval }}",
+              "type": "boolean"
+            },
+            {
+              "id": "safe-template-field-9",
+              "name": "generatedSubject",
+              "value": "={{ 'Payment reminder - invoice ' + $('Calculate Aging and Collection Rule').item.json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "safe-template-field-10",
+              "name": "generatedBody",
+              "value": "={{ 'Dear ' + $('Calculate Aging and Collection Rule').item.json.customerName + ',<br><br>This is a reminder that invoice <strong>' + $('Calculate Aging and Collection Rule').item.json.invoiceId + '</strong> for USD ' + Number($('Calculate Aging and Collection Rule').item.json.amountUsd).toFixed(2) + ' was due on ' + $('Calculate Aging and Collection Rule').item.json.dueDate + '. Please let us know if payment has already been arranged.<br><br>Regards,<br>Accounts Receivable' }}",
+              "type": "string"
+            },
+            {
+              "id": "safe-template-field-11",
+              "name": "draftSource",
+              "value": "deterministic_safe_template",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b12628c8-4332-4a20-82a3-baa4a935c5f2",
+      "name": "Prepare Customer Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        35008,
+        12448
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prepare-email-field-1",
+              "name": "invoiceId",
+              "value": "={{ $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "prepare-email-field-2",
+              "name": "customerName",
+              "value": "={{ $json.customerName }}",
+              "type": "string"
+            },
+            {
+              "id": "prepare-email-field-3",
+              "name": "customerEmail",
+              "value": "={{ $json.customerEmail }}",
+              "type": "string"
+            },
+            {
+              "id": "prepare-email-field-4",
+              "name": "amountUsd",
+              "value": "={{ $json.amountUsd }}",
+              "type": "number"
+            },
+            {
+              "id": "prepare-email-field-5",
+              "name": "collectionAction",
+              "value": "={{ $json.collectionAction }}",
+              "type": "string"
+            },
+            {
+              "id": "prepare-email-field-6",
+              "name": "requiresApproval",
+              "value": "={{ $json.requiresApproval }}",
+              "type": "boolean"
+            },
+            {
+              "id": "prepare-email-field-7",
+              "name": "subject",
+              "value": "={{ $json.generatedSubject }}",
+              "type": "string"
+            },
+            {
+              "id": "prepare-email-field-8",
+              "name": "emailBody",
+              "value": "={{ $json.generatedBody }}",
+              "type": "string"
+            },
+            {
+              "id": "prepare-email-field-9",
+              "name": "draftSource",
+              "value": "={{ $json.draftSource }}",
+              "type": "string"
+            },
+            {
+              "id": "prepare-email-field-10",
+              "name": "approvalPhrase",
+              "value": "={{ 'APPROVE COLLECTION ' + $json.invoiceId + ' ' + $execution.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5077d6cb-adef-4019-91ea-7b0269b655cf",
+      "name": "Human Approval Required?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        35344,
+        12496
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "approval-required-condition",
+              "leftValue": "={{ $json.requiresApproval }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "13ca1e54-2b46-4664-b0e7-faa4244ef4b1",
+      "name": "Queue Pending Approval",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        35600,
+        12384
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_approvals_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "approvalId",
+              "fieldValue": "={{ $execution.id }}"
+            },
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $json.invoiceId }}"
+            },
+            {
+              "fieldId": "customerName",
+              "fieldValue": "={{ $json.customerName }}"
+            },
+            {
+              "fieldId": "customerEmail",
+              "fieldValue": "={{ $json.customerEmail }}"
+            },
+            {
+              "fieldId": "subject",
+              "fieldValue": "={{ $json.subject }}"
+            },
+            {
+              "fieldId": "emailBody",
+              "fieldValue": "={{ $json.emailBody }}"
+            },
+            {
+              "fieldId": "approvalPhrase",
+              "fieldValue": "={{ $json.approvalPhrase }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "PENDING"
+            },
+            {
+              "fieldId": "createdAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "186417ed-6ff6-4bf9-ae75-7e7daaa7be29",
+      "name": "Send Approval Request",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        35856,
+        12384
+      ],
+      "parameters": {
+        "sendTo": "collections-review@example.com",
+        "subject": "={{ 'Approval required: ' + $('Prepare Customer Email').item.json.invoiceId }}",
+        "message": "={{ '<p>A collection reminder requires review.</p><p><strong>Invoice:</strong> ' + $('Prepare Customer Email').item.json.invoiceId + '</p><p><strong>Customer:</strong> ' + $('Prepare Customer Email').item.json.customerName + '</p><p>Approval phrase: <code>' + $('Prepare Customer Email').item.json.approvalPhrase + '</code></p>' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "eaff9f41-ab44-4ff9-8f2c-277158733624",
+      "name": "Write Approval Queue Audit",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        36128,
+        12384
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_audit_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Prepare Customer Email').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "eventAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "eventType",
+              "fieldValue": "APPROVAL_QUEUED"
+            },
+            {
+              "fieldId": "details",
+              "fieldValue": "Reminder queued for human approval"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "02b9cab3-71be-47e6-bf4d-82d357a3e84d",
+      "name": "Scheduled Recipient Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        35520,
+        12656
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "scheduled-recipient-condition",
+              "leftValue": "={{ /^[^@\\s]+@example\\.com$/i.test(String($json.customerEmail || '')) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f00c2694-fd78-4cef-ac2f-8644ea73f3bf",
+      "name": "Send Customer Payment Reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        35760,
+        12608
+      ],
+      "parameters": {
+        "sendTo": "={{ $json.customerEmail }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "17ac1685-c3ef-442e-b222-3d7a8640894d",
+      "name": "Build Reminder Delivery Record",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        36016,
+        12608
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "delivery-record-field-1",
+              "name": "invoiceId",
+              "value": "={{ $('Prepare Customer Email').item.json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "delivery-record-field-2",
+              "name": "customer",
+              "value": "={{ $('Prepare Customer Email').item.json.customerName }}",
+              "type": "string"
+            },
+            {
+              "id": "delivery-record-field-3",
+              "name": "recipient",
+              "value": "={{ $('Prepare Customer Email').item.json.customerEmail }}",
+              "type": "string"
+            },
+            {
+              "id": "delivery-record-field-4",
+              "name": "subject",
+              "value": "={{ $('Prepare Customer Email').item.json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "delivery-record-field-5",
+              "name": "action",
+              "value": "={{ $('Prepare Customer Email').item.json.collectionAction }}",
+              "type": "string"
+            },
+            {
+              "id": "delivery-record-field-6",
+              "name": "draftSource",
+              "value": "={{ $('Prepare Customer Email').item.json.draftSource }}",
+              "type": "string"
+            },
+            {
+              "id": "delivery-record-field-7",
+              "name": "sentAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c1258cf7-ea5f-4097-ada6-35c36f692b7d",
+      "name": "Convert Delivery Evidence to XLSX",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        36288,
+        12608
+      ],
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "fileName": "invoice-delivery-evidence.xlsx",
+          "headerRow": true,
+          "sheetName": "Delivery Evidence"
+        }
+      }
+    },
+    {
+      "id": "aab5acd7-0ccc-427e-905c-585a113f911e",
+      "name": "Store Delivery Evidence in S3",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        36544,
+        12608
+      ],
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "invoice-collections-portfolio-demo",
+        "fileName": "={{ 'evidence/' + $('Prepare Customer Email').item.json.invoiceId + '/' + $execution.id + '.xlsx' }}",
+        "additionalFields": {},
+        "tagsUi": {
+          "tagsValues": []
+        }
+      }
+    },
+    {
+      "id": "a1c6c929-694a-47e8-b084-171074db7413",
+      "name": "Record Reminder State",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        36800,
+        12608
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_state_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Prepare Customer Email').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "customerName",
+              "fieldValue": "={{ $('Prepare Customer Email').item.json.customerName }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "REMINDER_SENT"
+            },
+            {
+              "fieldId": "collectionAction",
+              "fieldValue": "={{ $('Prepare Customer Email').item.json.collectionAction }}"
+            },
+            {
+              "fieldId": "lastContactAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "executionId",
+              "fieldValue": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "aa91e009-db50-44e5-917f-ceb1bc65bf9d",
+      "name": "Write Reminder Audit",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        37056,
+        12608
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_audit_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Prepare Customer Email').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "eventAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "eventType",
+              "fieldValue": "REMINDER_SENT"
+            },
+            {
+              "fieldId": "details",
+              "fieldValue": "={{ 'Draft source: ' + $('Prepare Customer Email').item.json.draftSource }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "29a5bd76-7259-4f0d-b64e-a89d65cf2571",
+      "name": "Build Payment Confirmation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        35344,
+        13008
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "payment-confirmation-field-1",
+              "name": "invoiceId",
+              "value": "={{ $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "payment-confirmation-field-2",
+              "name": "customerName",
+              "value": "={{ $json.customerName }}",
+              "type": "string"
+            },
+            {
+              "id": "payment-confirmation-field-3",
+              "name": "customerEmail",
+              "value": "={{ $json.customerEmail }}",
+              "type": "string"
+            },
+            {
+              "id": "payment-confirmation-field-4",
+              "name": "subject",
+              "value": "={{ 'Payment received - invoice ' + $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "payment-confirmation-field-5",
+              "name": "emailBody",
+              "value": "={{ 'Dear ' + $json.customerName + ',<br><br>Thank you. We have recorded payment for invoice <strong>' + $json.invoiceId + '</strong>.<br><br>Regards,<br>Accounts Receivable' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "1ae69216-5f77-4caf-b812-b8cbc83296a0",
+      "name": "Payment Recipient Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        35584,
+        13008
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "payment-recipient-condition",
+              "leftValue": "={{ /^[^@\\s]+@example\\.com$/i.test(String($json.customerEmail || '')) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "dc061598-43c1-42b0-be19-99e7a9e5ab72",
+      "name": "Send Payment Confirmation",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        35856,
+        13008
+      ],
+      "parameters": {
+        "sendTo": "={{ $json.customerEmail }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "7a874f57-5042-4d53-ba37-f5111ac97398",
+      "name": "Record Payment Confirmation",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        36144,
+        13008
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_state_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Build Payment Confirmation').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "PAID"
+            },
+            {
+              "fieldId": "paymentConfirmationSent",
+              "fieldValue": "true"
+            },
+            {
+              "fieldId": "lastContactAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "d9731491-f9ab-4cc2-9985-92796390f80b",
+      "name": "Write Payment Confirmation Audit",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        36416,
+        13008
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_audit_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Build Payment Confirmation').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "eventAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "eventType",
+              "fieldValue": "PAYMENT_CONFIRMATION_SENT"
+            },
+            {
+              "fieldId": "details",
+              "fieldValue": "Customer payment acknowledgement sent"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "eefdd73e-3664-426b-8524-6093c2f88f5e",
+      "name": "Build Manual Review Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        35344,
+        13232
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "manual-review-field-1",
+              "name": "invoiceId",
+              "value": "={{ $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "manual-review-field-2",
+              "name": "customerName",
+              "value": "={{ $json.customerName }}",
+              "type": "string"
+            },
+            {
+              "id": "manual-review-field-3",
+              "name": "subject",
+              "value": "={{ 'Manual collection review required - ' + $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "manual-review-field-4",
+              "name": "emailBody",
+              "value": "={{ '<p>Review is required before further customer contact.</p><p><strong>Invoice:</strong> ' + $json.invoiceId + '</p><p><strong>Customer:</strong> ' + $json.customerName + '</p><p><strong>Status:</strong> ' + $json.status + '</p><p><strong>Dispute:</strong> ' + $json.disputeStatus + '</p>' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c17f0edf-ed38-4a3b-83f0-db11fcdd6acc",
+      "name": "Send Manual Review Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        35600,
+        13232
+      ],
+      "parameters": {
+        "sendTo": "collections-review@example.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "87e4dbcf-0074-4f7a-b345-539deddc40c0",
+      "name": "Write Manual Review Audit",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        35856,
+        13232
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_audit_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Build Manual Review Alert').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "eventAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "eventType",
+              "fieldValue": "MANUAL_REVIEW_REQUIRED"
+            },
+            {
+              "fieldId": "details",
+              "fieldValue": "Disputed or exceptional invoice routed to human review"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "1e9ad7e6-f1a6-4fa7-a82e-5988f111a2c8",
+      "name": "Build Scheduled Recipient Block",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        35760,
+        12816
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "scheduled-recipient-block-field-1",
+              "name": "invoiceId",
+              "value": "={{ $json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "scheduled-recipient-block-field-2",
+              "name": "recipient",
+              "value": "={{ $json.customerEmail }}",
+              "type": "string"
+            },
+            {
+              "id": "scheduled-recipient-block-field-3",
+              "name": "eventType",
+              "value": "RECIPIENT_BLOCKED",
+              "type": "string"
+            },
+            {
+              "id": "scheduled-recipient-block-field-4",
+              "name": "eventAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "scheduled-recipient-block-field-5",
+              "name": "details",
+              "value": "Portfolio safety mode only permits customer recipients at example.com.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ef49ecdf-efb9-435b-9e35-4c78200f3ea7",
+      "name": "Write Scheduled Recipient Block Audit",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        36016,
+        12816
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_audit_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $json.invoiceId }}"
+            },
+            {
+              "fieldId": "eventAt",
+              "fieldValue": "={{ $json.eventAt }}"
+            },
+            {
+              "fieldId": "eventType",
+              "fieldValue": "={{ $json.eventType }}"
+            },
+            {
+              "fieldId": "details",
+              "fieldValue": "={{ $json.details }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "2d32cbe8-7d96-4606-86ec-2b5ef73b59ab",
+      "name": "Continue Invoice Batch",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        36896,
+        13232
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "bb47d2d9-c93b-4775-be95-d27ad9a3242b",
+      "name": "Aggregate Run Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        37360,
+        12448
+      ],
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "processedInvoices",
+        "options": {}
+      }
+    },
+    {
+      "id": "2fc9208e-d6eb-4a3a-a766-13cf06056f04",
+      "name": "Build Run Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        37600,
+        12448
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "run-summary-field-1",
+              "name": "executionId",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "run-summary-field-2",
+              "name": "completedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "run-summary-field-3",
+              "name": "processedCount",
+              "value": "={{ Array.isArray($json.processedInvoices) ? $json.processedInvoices.length : 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "run-summary-field-4",
+              "name": "status",
+              "value": "COMPLETED",
+              "type": "string"
+            },
+            {
+              "id": "run-summary-field-5",
+              "name": "source",
+              "value": "daily_s3_feed",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c3d44e50-9e32-490f-b6da-cfd9d3d11c47",
+      "name": "Convert Run Report to XLSX",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        37840,
+        12448
+      ],
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "fileName": "invoice-collections-run-report.xlsx",
+          "headerRow": true,
+          "sheetName": "Run Summary"
+        }
+      }
+    },
+    {
+      "id": "2e624a34-efd5-48fb-b0b0-9553928f222a",
+      "name": "Store Run Report in S3",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        38080,
+        12448
+      ],
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "invoice-collections-portfolio-demo",
+        "fileName": "={{ 'reports/' + $now.toFormat('yyyy-LL-dd') + '/' + $execution.id + '.xlsx' }}",
+        "additionalFields": {},
+        "tagsUi": {
+          "tagsValues": []
+        }
+      }
+    },
+    {
+      "id": "74305d74-7dc9-420c-9a40-f083d7708eaa",
+      "name": "Send Operations Run Summary",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        38320,
+        12448
+      ],
+      "parameters": {
+        "sendTo": "collections-ops@example.com",
+        "subject": "={{ 'Invoice collections run completed - ' + $now.toFormat('yyyy-LL-dd') }}",
+        "message": "={{ '<p>The daily invoice collections run completed.</p><p><strong>Execution:</strong> ' + $execution.id + '</p><p><strong>Report:</strong> stored in the portfolio S3 bucket.</p>' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "feee04bb-4a74-40f2-a90d-dea1fecf98a6",
+      "name": "Approval Request Received",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        33120,
+        11664
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio-invoice-collection-approval",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "portfolio-invoice-collection-approval"
+    },
+    {
+      "id": "8d02c54d-9600-42f0-9773-031f010f203d",
+      "name": "Normalize Approval Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        33376,
+        11664
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "normalize-approval-field-1",
+              "name": "invoiceId",
+              "value": "={{ String($json.body?.invoiceId || '').trim().toUpperCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-approval-field-2",
+              "name": "approvalPhrase",
+              "value": "={{ String($json.body?.approvalPhrase || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "normalize-approval-field-3",
+              "name": "actorEmail",
+              "value": "={{ String($json.body?.actorEmail || '').trim().toLowerCase() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "391676a5-5150-43ac-827e-9ab765115f0b",
+      "name": "Get Pending Approval",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        33632,
+        11664
+      ],
+      "parameters": {
+        "operation": "get",
+        "tableName": "invoice_collections_approvals_demo",
+        "keysUi": {
+          "keyValues": [
+            {
+              "key": "approvalId",
+              "value": "={{ String($json.approvalPhrase || '').split(' ').pop() }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "9870fddf-855d-442c-a93b-9d08d6287c86",
+      "name": "Exact Approval Phrase Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        33904,
+        11664
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "approval-valid-condition",
+              "leftValue": "={{ $json.status === 'PENDING' && $json.approvalPhrase === $('Normalize Approval Request').item.json.approvalPhrase }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "47bfccf6-2f5c-452c-b360-3bb728f849d2",
+      "name": "Build Invalid Approval Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        33904,
+        11904
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "approval-invalid-field-1",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "approval-invalid-field-2",
+              "name": "status",
+              "value": "approval_invalid",
+              "type": "string"
+            },
+            {
+              "id": "approval-invalid-field-3",
+              "name": "message",
+              "value": "The approval phrase is invalid, expired, or already used.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "17cc2c03-b9ac-4add-ab6c-040c488653d3",
+      "name": "Return Approval Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        34160,
+        11904
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 409
+        }
+      }
+    },
+    {
+      "id": "86eb3e50-f2b5-4392-a344-41413d0c6191",
+      "name": "Approved Recipient Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        34160,
+        11664
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "approval-recipient-condition",
+              "leftValue": "={{ /^[^@\\s]+@example\\.com$/i.test(String($json.customerEmail || '')) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "1e72ae99-9a37-4125-9452-c2e59f27b8b4",
+      "name": "Build Recipient Block Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        34416,
+        11904
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "recipient-blocked-field-1",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "recipient-blocked-field-2",
+              "name": "status",
+              "value": "recipient_blocked",
+              "type": "string"
+            },
+            {
+              "id": "recipient-blocked-field-3",
+              "name": "message",
+              "value": "Portfolio safety mode only permits recipients at example.com.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "4774d4b6-b20c-43a0-9253-89b9fd6f3e5e",
+      "name": "Return Recipient Block",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        34672,
+        11904
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 403
+        }
+      }
+    },
+    {
+      "id": "2869760d-815c-49cf-9c11-2238c0ef7f5e",
+      "name": "Send Approved Customer Reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        34416,
+        11664
+      ],
+      "parameters": {
+        "sendTo": "={{ $json.customerEmail }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "8ae03bf5-d93f-42cb-95de-7f1b0a53e420",
+      "name": "Write Approved Delivery Audit",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        34672,
+        11664
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_audit_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Get Pending Approval').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "eventAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "eventType",
+              "fieldValue": "APPROVED_REMINDER_SENT"
+            },
+            {
+              "fieldId": "details",
+              "fieldValue": "={{ 'Approved by ' + $('Normalize Approval Request').item.json.actorEmail }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "2b9945d7-e53d-45bd-9eb4-5ee0fc6af02b",
+      "name": "Mark Approval Used",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        34944,
+        11664
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_approvals_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "approvalId",
+              "fieldValue": "={{ $('Get Pending Approval').item.json.approvalId }}"
+            },
+            {
+              "fieldId": "invoiceId",
+              "fieldValue": "={{ $('Get Pending Approval').item.json.invoiceId }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "USED"
+            },
+            {
+              "fieldId": "usedAt",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "usedBy",
+              "fieldValue": "={{ $('Normalize Approval Request').item.json.actorEmail }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "67115b3d-264e-4c62-b467-0704fcb02e52",
+      "name": "Build Approval Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        35200,
+        11664
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "approval-success-field-1",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "approval-success-field-2",
+              "name": "status",
+              "value": "sent",
+              "type": "string"
+            },
+            {
+              "id": "approval-success-field-3",
+              "name": "invoiceId",
+              "value": "={{ $('Get Pending Approval').item.json.invoiceId }}",
+              "type": "string"
+            },
+            {
+              "id": "approval-success-field-4",
+              "name": "message",
+              "value": "Approved customer reminder sent and audited.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c8995c52-6254-4abc-9c89-891596cd0c24",
+      "name": "Return Approval Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        35456,
+        11664
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "2f3834f2-56f3-4664-af09-2c869848b9cb",
+      "name": "Capture Workflow Failure",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        34304,
+        11008
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "f2f6e1a8-36cb-4ace-b5a7-52a0b3cd7d40",
+      "name": "Redact Error Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        34544,
+        11008
+      ],
+      "parameters": {
+        "jsCode": "const execution = $json.execution || {};\nconst workflow = $json.workflow || {};\nconst raw = String(execution.error?.message || 'Unknown workflow error');\nconst redacted = raw.replace(/[A-Za-z0-9_\\-]{24,}/g, '[REDACTED]').slice(0, 500);\nreturn { json: { incidentId: 'INC-' + String(execution.id || $execution.id), workflowName: workflow.name || 'Invoice Collections Automation', executionId: String(execution.id || ''), lastNode: String(execution.lastNodeExecuted || ''), errorMessage: redacted, severity: /credential|forbidden|unauthorized/i.test(raw) ? 'HIGH' : 'MEDIUM', occurredAt: new Date().toISOString() } };"
+      }
+    },
+    {
+      "id": "bd8d0b2e-ef05-4cbc-9b06-23a802d42389",
+      "name": "Write Error Record",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [
+        34784,
+        11008
+      ],
+      "parameters": {
+        "tableName": "invoice_collections_incidents_demo",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "incidentId",
+              "fieldValue": "={{ $json.incidentId }}"
+            },
+            {
+              "fieldId": "occurredAt",
+              "fieldValue": "={{ $json.occurredAt }}"
+            },
+            {
+              "fieldId": "workflowName",
+              "fieldValue": "={{ $json.workflowName }}"
+            },
+            {
+              "fieldId": "executionId",
+              "fieldValue": "={{ $json.executionId }}"
+            },
+            {
+              "fieldId": "lastNode",
+              "fieldValue": "={{ $json.lastNode }}"
+            },
+            {
+              "fieldId": "severity",
+              "fieldValue": "={{ $json.severity }}"
+            },
+            {
+              "fieldId": "errorMessage",
+              "fieldValue": "={{ $json.errorMessage }}"
+            }
+          ]
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "8535e1dc-41b6-4ad9-bb6a-ac8366eefca7",
+      "name": "Notify Operations on Failure",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        35024,
+        11008
+      ],
+      "parameters": {
+        "sendTo": "automation-ops@example.com",
+        "subject": "={{ 'Invoice collections workflow failure - ' + $('Redact Error Context').item.json.incidentId }}",
+        "message": "={{ '<p>A workflow failure was recorded.</p><p><strong>Incident:</strong> ' + $('Redact Error Context').item.json.incidentId + '</p><p><strong>Severity:</strong> ' + $('Redact Error Context').item.json.severity + '</p><p><strong>Last node:</strong> ' + $('Redact Error Context').item.json.lastNode + '</p>' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Chat Message Received": {
+      "main": [
+        [
+          {
+            "node": "Normalize Chat Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Chat Request": {
+      "main": [
+        [
+          {
+            "node": "Load Saved Conversation Context",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Current and Saved Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Saved Conversation Context": {
+      "main": [
+        [
+          {
+            "node": "Merge Current and Saved Context",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Current and Saved Context": {
+      "main": [
+        [
+          {
+            "node": "Build Grounded Agent Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Grounded Agent Prompt": {
+      "main": [
+        [
+          {
+            "node": "Invoice Collections Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice Collections Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Agent Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Agent Response": {
+      "main": [
+        [
+          {
+            "node": "Save Conversation Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Conversation Context": {
+      "main": [
+        [
+          {
+            "node": "Return Agent Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Bedrock Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Invoice Collections Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bounded Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Invoice Collections Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Portfolio Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "Invoice Collections Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice State Lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "Invoice Collections Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminder Preview": {
+      "ai_tool": [
+        [
+          {
+            "node": "Invoice Collections Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called as Agent Tool": {
+      "main": [
+        [
+          {
+            "node": "Route Agent Tool Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Agent Tool Operation": {
+      "main": [
+        [
+          {
+            "node": "Download Agent Portfolio Feed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Invoice State for Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Reminder State for Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Unsupported Tool Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Agent Portfolio Feed": {
+      "main": [
+        [
+          {
+            "node": "Extract Agent Portfolio CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Agent Portfolio CSV": {
+      "main": [
+        [
+          {
+            "node": "Filter and Summarize Portfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter and Summarize Portfolio": {
+      "main": [
+        [
+          {
+            "node": "Return Portfolio Search Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Invoice State for Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Invoice State Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Reminder State for Agent": {
+      "main": [
+        [
+          {
+            "node": "Reminder Preview Eligible?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminder Preview Eligible?": {
+      "main": [
+        [
+          {
+            "node": "Build Agent Reminder Preview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Ineligible Preview Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Collections Schedule": {
+      "main": [
+        [
+          {
+            "node": "Download Invoice Aging Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Invoice Aging Feed": {
+      "main": [
+        [
+          {
+            "node": "Extract Invoice CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Invoice CSV": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Invoices": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Run Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Invoice Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Invoice Record": {
+      "main": [
+        [
+          {
+            "node": "Invoice Record Valid?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Invoice and State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice Record Valid?": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Collection State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Data Quality Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Data Quality Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Data Quality Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Data Quality Alert": {
+      "main": [
+        [
+          {
+            "node": "Write Data Quality Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Data Quality Audit": {
+      "main": [
+        [
+          {
+            "node": "Continue Invoice Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Collection State": {
+      "main": [
+        [
+          {
+            "node": "Merge Invoice and State",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Invoice and State": {
+      "main": [
+        [
+          {
+            "node": "Calculate Aging and Collection Rule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Aging and Collection Rule": {
+      "main": [
+        [
+          {
+            "node": "Collection Action Required?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collection Action Required?": {
+      "main": [
+        [
+          {
+            "node": "Route Collection Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build No Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build No Action Result": {
+      "main": [
+        [
+          {
+            "node": "Write No Action Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write No Action Audit": {
+      "main": [
+        [
+          {
+            "node": "Continue Invoice Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Collection Action": {
+      "main": [
+        [
+          {
+            "node": "Bedrock Reminder Drafting Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bedrock Reminder Drafting Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Payment Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Manual Review Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drafting Bedrock Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Bedrock Reminder Drafting Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bedrock Reminder Drafting Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse and Screen AI Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse and Screen AI Draft": {
+      "main": [
+        [
+          {
+            "node": "AI Draft Safe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Draft Safe?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Customer Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apply Safe Reminder Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Safe Reminder Template": {
+      "main": [
+        [
+          {
+            "node": "Prepare Customer Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Customer Email": {
+      "main": [
+        [
+          {
+            "node": "Human Approval Required?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Approval Required?": {
+      "main": [
+        [
+          {
+            "node": "Queue Pending Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Scheduled Recipient Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scheduled Recipient Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Send Customer Payment Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Scheduled Recipient Block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Pending Approval": {
+      "main": [
+        [
+          {
+            "node": "Send Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Write Approval Queue Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Approval Queue Audit": {
+      "main": [
+        [
+          {
+            "node": "Continue Invoice Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Customer Payment Reminder": {
+      "main": [
+        [
+          {
+            "node": "Build Reminder Delivery Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reminder Delivery Record": {
+      "main": [
+        [
+          {
+            "node": "Convert Delivery Evidence to XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Delivery Evidence to XLSX": {
+      "main": [
+        [
+          {
+            "node": "Store Delivery Evidence in S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Delivery Evidence in S3": {
+      "main": [
+        [
+          {
+            "node": "Record Reminder State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Reminder State": {
+      "main": [
+        [
+          {
+            "node": "Write Reminder Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Reminder Audit": {
+      "main": [
+        [
+          {
+            "node": "Continue Invoice Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Payment Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Payment Recipient Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment Recipient Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Scheduled Recipient Block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Record Payment Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Payment Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Write Payment Confirmation Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Payment Confirmation Audit": {
+      "main": [
+        [
+          {
+            "node": "Continue Invoice Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Manual Review Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Manual Review Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Manual Review Alert": {
+      "main": [
+        [
+          {
+            "node": "Write Manual Review Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Manual Review Audit": {
+      "main": [
+        [
+          {
+            "node": "Continue Invoice Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scheduled Recipient Block": {
+      "main": [
+        [
+          {
+            "node": "Write Scheduled Recipient Block Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Scheduled Recipient Block Audit": {
+      "main": [
+        [
+          {
+            "node": "Continue Invoice Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continue Invoice Batch": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Run Results": {
+      "main": [
+        [
+          {
+            "node": "Build Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Run Summary": {
+      "main": [
+        [
+          {
+            "node": "Convert Run Report to XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Run Report to XLSX": {
+      "main": [
+        [
+          {
+            "node": "Store Run Report in S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Run Report in S3": {
+      "main": [
+        [
+          {
+            "node": "Send Operations Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Request Received": {
+      "main": [
+        [
+          {
+            "node": "Normalize Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Approval": {
+      "main": [
+        [
+          {
+            "node": "Exact Approval Phrase Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exact Approval Phrase Valid?": {
+      "main": [
+        [
+          {
+            "node": "Approved Recipient Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Invalid Approval Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Invalid Approval Response": {
+      "main": [
+        [
+          {
+            "node": "Return Approval Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved Recipient Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Send Approved Customer Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Recipient Block Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Recipient Block Response": {
+      "main": [
+        [
+          {
+            "node": "Return Recipient Block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Approved Customer Reminder": {
+      "main": [
+        [
+          {
+            "node": "Write Approved Delivery Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Approved Delivery Audit": {
+      "main": [
+        [
+          {
+            "node": "Mark Approval Used",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Approval Used": {
+      "main": [
+        [
+          {
+            "node": "Build Approval Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approval Success Response": {
+      "main": [
+        [
+          {
+            "node": "Return Approval Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Workflow Failure": {
+      "main": [
+        [
+          {
+            "node": "Redact Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redact Error Context": {
+      "main": [
+        [
+          {
+            "node": "Write Error Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Error Record": {
+      "main": [
+        [
+          {
+            "node": "Notify Operations on Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "65cbe44d-f6cf-4a98-8a58-ec53efaa84c5",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

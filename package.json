@@ -1,0 +1,14 @@
+{
+  "name": "n8n-ai-invoice-collections-automation",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Enterprise-style n8n portfolio workflow for AWS-integrated AI invoice collections automation.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-combined-workflow.mjs",
+    "test": "node scripts/validate-workflow.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
