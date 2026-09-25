@@ -1,5 +1,8 @@
 # n8n AI Invoice Collections Automation
 
+[![Validate n8n workflow exports](https://github.com/gaboscini/n8n-ai-invoice-collections-automation/actions/workflows/validate.yml/badge.svg)](https://github.com/gaboscini/n8n-ai-invoice-collections-automation/actions/workflows/validate.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 An enterprise-style portfolio workflow that combines n8n, Amazon S3, Amazon DynamoDB, Amazon Bedrock, Gmail, deterministic collection policy, human approval, audit evidence, and operational error handling.
 
 The repository uses fictional data and generic infrastructure names. It is an independent portfolio implementation and does not contain customer workflows, credentials, private endpoints, or proprietary datasets.
@@ -125,7 +128,7 @@ The chat lane is deliberately separate from the scheduled automation. It combine
 - **Invoice State Lookup** retrieves current invoice state from DynamoDB.
 - **Reminder Preview** verifies that an invoice is eligible and returns a preview without sending.
 
-Both tools call the same imported workflow through one **Execute Workflow Trigger**. After import, replace the visible `REPLACE_WITH_THIS_WORKFLOW_ID` values with the imported workflow ID.
+All three tools call the same imported workflow through one **Execute Workflow Trigger**. After import, replace the visible `REPLACE_WITH_THIS_WORKFLOW_ID` values with the imported workflow ID.
 
 Conversation context resolves references such as “that invoice” or “the largest one,” but it is not treated as evidence for current amounts, status, eligibility, recipients, or approval. Those facts must be refreshed through a tool.
 
@@ -247,7 +250,7 @@ Keep the workflow inactive while configuring it.
 2. Select a non-production Gmail OAuth credential on all Gmail nodes.
 3. Create the generic demonstration bucket and tables documented in `docs/AWS_SETUP.md`.
 4. Upload `samples/daily-invoice-aging.csv` to the expected S3 key.
-5. Replace both self-workflow placeholders with the imported workflow ID.
+5. Replace all three self-workflow placeholders with the imported workflow ID.
 6. Review all static recipients and the `example.com` recipient gate.
 7. Execute individual branches manually before enabling the schedule or webhook.
 
@@ -262,7 +265,7 @@ Keep the workflow inactive while configuring it.
 7. Submit an incorrect approval phrase, then a correct phrase using fictional data.
 8. Show the S3 evidence file, DynamoDB audit item, run report, and operations summary.
 9. Trigger a controlled failure and show redaction before incident storage and notification.
-10. Ask the conversational agent for one invoice and show that it uses the DynamoDB tool.
+10. Ask the conversational agent for a portfolio summary, continue with a contextual follow-up, and then request the exact operational state of one invoice.
 
 The Error Trigger lane is kept on the integrated canvas for portfolio readability. To execute it in n8n, duplicate that lane into a separate workflow and configure it as the main workflow's error workflow; an Error Trigger cannot catch failures from its own containing workflow.
 
